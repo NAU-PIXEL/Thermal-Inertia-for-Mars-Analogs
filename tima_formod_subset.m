@@ -3,7 +3,7 @@ function [Output] = tima_formod_subset(FitParams,indecies,formod)
 %   function to run forwad model but only retrieve results for a specific subset of indecies
 %
 % Syntax
-%   [Output] = tima_formod_subset(theta,ind,formod)
+%   [Output] = tima_formod_subset(FitParams,indecies,formod)
 
 % Inputs
 %   FitParams: parameters for fitting

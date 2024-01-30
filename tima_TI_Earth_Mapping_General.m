@@ -75,15 +75,15 @@ function [] = tima_TI_Earth_Mapping_General(TData,HData,MData,in_DIR,out_DIR,row
 %Inputs loaded in .sh file
 %load EE2022_Workspace_1Min.mat
 format shortG
-imptopts = detectImportOptions([DIR,'Slope_1cm.csv']);
+imptopts = detectImportOptions([in_DIR,'Slope_1cm.csv']);
 imptopts.DataLines = [row row];
-Data_Slope_X = readmatrix([DIR,'Slope_1cm.csv'],imptopts);
-Data_Aspect_X = readmatrix([DIR,'Aspect_cwfromS_1cm.csv'],imptopts);
-Data_Albedo_X = readmatrix([DIR,'Albedo_1cm.csv'],imptopts); %1x8840
-Data_Shadow_X = readmatrix([DIR,'Shadows_1cm_rows/',sprintf('Shadow_Row_%u.csv',row)]);
+Data_Slope_X = readmatrix([in_DIR,'Slope_1cm.csv'],imptopts);
+Data_Aspect_X = readmatrix([in_DIR,'Aspect_cwfromS_1cm.csv'],imptopts);
+Data_Albedo_X = readmatrix([in_DIR,'Albedo_1cm.csv'],imptopts); %1x8840
+Data_Shadow_X = readmatrix([in_DIR,'Shadows_1cm_rows/',sprintf('Shadow_Row_%u.csv',row)]);
 Data_UAV_X = NaN([size(Data_Albedo_X,2) size(MData.UAV_flight_ind,2)]);
 for t = 1:size(MData.UAV_flight_ind,2)
-    Data_UAV_X(:,t) = readmatrix([DIR,sprintf('TempC_1cm_%u.csv',t)],imptopts);
+    Data_UAV_X(:,t) = readmatrix([in_DIR,sprintf('TempC_1cm_%u.csv',t)],imptopts);
 end
 % opts.UseParallel = false;
 poolobj = gcp('nocreate');
@@ -101,7 +101,7 @@ parfor col = 1:MData.col_max
             isnan(Data_Slope_X(col)) || isnan(Data_Aspect_X(col)) || isnan(Data_Albedo_X(col)) || isnan(single(Data_Shadow_X(col,1)))
             continue
         end
-        formod = @(theta) Heat_Transfer(theta(1),MData.vars_assigned(2),theta(2),MData.vars_assigned(4),MData.vars_assigned(5),MData.vars_assigned(6),MData.vars_assigned(7),MData.vars_assigned(8),HData.density,MData.dt,TData.air_Temp_C,TData.GHI,TData.DF,TData.r_long_upper,...
+        formod = @(theta) tima_heat_transfer(theta(1),MData.vars_assigned(2),theta(2),MData.vars_assigned(4),MData.vars_assigned(5),MData.vars_assigned(6),MData.vars_assigned(7),MData.vars_assigned(8),HData.density,MData.dt,TData.air_Temp_C,TData.GHI,TData.DF,TData.r_long_upper,...
             TData.windspeed_horiz_ms,HData.top_start_Temp_K,MData.start_Temps_K,MData.layer_size,TData.dug_VWC_smooth,MData.VWC_depth_indices,TData.humidity,HData.emissivity,Data_Albedo_X(col),Data_Slope_X(col),Data_Aspect_X(col),...
             TData.solarzenith_apparent,TData.solarazimuth_cwfromS,TData.pressure_air_Pa,single(Data_Shadow_X(col,:)),MData.shadow_time_ind,HData.reflectivity);%%
         Temps_Obs = Data_UAV_X(col,:);
@@ -115,9 +115,9 @@ parfor col = 1:MData.col_max
         else
             RESULTS(:) = RESULTS_holder';
             fval = fval_holder;
-            writematrix(round(RESULTS(1),3),[OUT_DIR,sprintf('TK_Row_%u_Col_%u.txt',row,col)],'Delimiter',',')
-            writematrix(round(RESULTS(2),3),[OUT_DIR,sprintf('Depth_Row_%u_Col_%u.txt',row,col)],'Delimiter',',')
-            writematrix(round(fval,3),[OUT_DIR,sprintf('fval_Row_%u_Col_%u.txt',row,col)],'Delimiter',',')
+            writematrix(round(RESULTS(1),3),[out_DIR,sprintf('TK_Row_%u_Col_%u.txt',row,col)],'Delimiter',',')
+            writematrix(round(RESULTS(2),3),[out_DIR,sprintf('Depth_Row_%u_Col_%u.txt',row,col)],'Delimiter',',')
+            writematrix(round(fval,3),[out_DIR,sprintf('fval_Row_%u_Col_%u.txt',row,col)],'Delimiter',',')
         end
 end
 
@@ -127,19 +127,19 @@ LineTKData = NaN([1 MData.col_max]);
 LineDepthData = NaN([1 MData.col_max]);
 LinefvalData = NaN([1 MData.col_max]);
 for col = 1:MData.col_max
-    LineTKFile = [OUT_DIR,sprintf('TK_Row_%u_Col_%u.txt',row,col)];
-    LineDepthFile = [OUT_DIR,sprintf('Depth_Row_%u_Col_%u.txt',row,col)];
-    LinefvalFile = [OUT_DIR,sprintf('fval_Row_%u_Col_%u.txt',row,col)];
+    LineTKFile = [out_DIR,sprintf('TK_Row_%u_Col_%u.txt',row,col)];
+    LineDepthFile = [out_DIR,sprintf('Depth_Row_%u_Col_%u.txt',row,col)];
+    LinefvalFile = [out_DIR,sprintf('fval_Row_%u_Col_%u.txt',row,col)];
     if isfile(LineTKFile)
         LineTKData(1,col) = readmatrix(LineTKFile);
 	    LineDepthData(1,col) = readmatrix(LineDepthFile);
         LinefvalData(1,col) = readmatrix(LinefvalFile);
     end
 end
-writematrix(LineTKData,[OUT_DIR,sprintf('TK_Line_%u.txt',row)],'Delimiter',',')
-writematrix(LineDepthData,[OUT_DIR,sprintf('Depth_Line_%u.txt',row)],'Delimiter',',')
-writematrix(LinefvalData,[OUT_DIR,sprintf('fval_Line_%u.txt',row)],'Delimiter',',')
-delete([OUT_DIR,sprintf('*Row_%u_Col*.txt',row)])
+writematrix(LineTKData,[out_DIR,sprintf('TK_Line_%u.txt',row)],'Delimiter',',')
+writematrix(LineDepthData,[out_DIR,sprintf('Depth_Line_%u.txt',row)],'Delimiter',',')
+writematrix(LinefvalData,[out_DIR,sprintf('fval_Line_%u.txt',row)],'Delimiter',',')
+delete([out_DIR,sprintf('*Row_%u_Col*.txt',row)])
 poolobj = gcp('nocreate');
 delete(poolobj);
 end

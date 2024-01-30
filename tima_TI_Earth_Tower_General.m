@@ -1,4 +1,4 @@
-%% TIMA_TI_EARTH_TOWER_GENERAL (TI Mars Analogs)
+function [] = tima_TI_Earth_Tower_General(TData,MData,outDIR,varargin)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
 %   observations taken in the field to fit 2D multi-parameter model to each pixel. Justification for
 %   approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
@@ -10,8 +10,51 @@
 %   conductivity at 300K, bottome layer thermal conductivity at 300K, Depth of thermal conductivity
 %   transition, pore-network-connectivity, Surf. ex. coef. (sensible), Surf. ex. coef. (latent), Soil Moist. Inflection (conductivity) (%), Soil Moist. Infl. (latent heat) (%)
 %
-% Input Parameters
+% SYNTAX
+%   tima_TI_Earth_Tower_General(TData,MData,outDIR)
+%   tima_TI_Earth_Tower_General(TData,MData,outDIR,'TwoSpot',true)
 
+% Input Parameters
+%   TData: Time data - struct of timeseries data variables 
+%       TData.air_Temp_C: 
+%       TData.DF:
+%       TData.dug_VWC_smooth: 
+%       TData.dug_VWC_smooth_II: 
+%       TData.evap_depth 
+%       TData.evap_depth_II 
+%       TData.humidity: as a fraction
+%       TData.pressure_air_Pa: 
+%       TData.r_long_upper:
+%       TData.r_short_upper: 
+%       TData.r_short_lower: 
+%       TData.solarazimuth_cwfromS:
+%       TData.solarzenith_apparent:
+%       TData.timed_albedo: 
+%       TData.timed_albedo_II: 
+%       TData.temps_to_fit: 
+%       TData.temps_to_fit_II: 
+%       TData.windspeed_horiz_ms: 
+%
+%   
+%   MData: Model Data - Struct of static and model format variables
+%       MData.burnin: 
+%       MData.dt:
+%       MData.density: 
+%       MData.emissivity: 
+%       MData.layer_size: 
+%       MData.mccount:  NwalkersxNsteps This is the total number of MC proposals, -NOT the number per chain.
+%       MData.minit:
+%       MData.nvars: 
+%       Mdata.parallel: t or f   [f]
+%       MData.T_deep: 
+%       MData.T_start: 
+%       MData.T_std: 
+%       MData.ThinChain: [20]
+%       MData.VWC_depth_indices: 
+%       MData.notes:
+%       MData.vars_init:
+
+%   out_DIR:
 
 % Outputs:
 %   TK_Line_%u.txt
@@ -32,50 +75,35 @@
 % See also 
 %   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
 
-
-
-%% SET SolarZenith to Apparent (90-apparent solar elevation angle)
-%Inputs loaded in .sh file
-%load EE2022_Workspace_1Min.mat
 format shortG
-imptopts = detectImportOptions([DIR,'Slope_1cm.csv']);
-imptopts.DataLines = [row row];
-Data_Slope_X = readmatrix([DIR,'Slope_1cm.csv'],imptopts);
-Data_Aspect_X = readmatrix([DIR,'Aspect_cwfromS_1cm.csv'],imptopts);
-Data_Albedo_X = readmatrix([DIR,'Albedo_1cm.csv'],imptopts); %1x8840
-Data_Shadow_X = readmatrix([Shadow_DIR,sprintf('Shadow_Row_%u.csv',row)]);
-Data_UAV_X = NaN([size(Data_Albedo_X,2) size(ind,2)]);
-for t = 1:size(ind,2)
-    Data_UAV_X(:,t) = readmatrix([DIR,sprintf('TempC_1cm_%u.csv',t)],imptopts);
-end
-% opts.UseParallel = false;
-%% Initialize Walkers
-% ***************
+p = inputParser;
+p.addRequired('TData',@isstruct);
+p.addRequired('MData',@isstruct);
+p.addRequired('outDIR',@ischar);
+p.addParameter('TwoSpot',false,@islogical);
+p.parse(TData, MData, outDIR, varargin{:});
+p=p.Results;
+TwoSpot = p.TwoSpot;
 
-%For the old and the new model parameters, determine
-% the posterior (the log likelihood + the log prior) and find
-% R = Pnew/Pold (which is lnR = lnPnew - lnPold in log space)
-% – If R > 1 always accept the new parameters
-% – If R < 1 accept the new parameters with probability R
-% – Check how often the new parameters are accepted. If
-% this is far from ~30% (meaning inefficient), change the proposal step size (sigma)
-% Simulation Parameters
-nwalkers = 50; %100
-nstep = 5000; %10000
-burnin = 0.5; %fraction of results to omit
-sigma = 10^-2; % dictates sinsitivity of walkers to change
-rng(49)  % For reproducibility
-minit = zeros(length(Vars_init),nwalkers);
-for i = 1:nwalkers
-    minit(:,i) = Vars_init + sigma*Vars_init.*randn(length(Vars_init),1);
+formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+        FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
+        TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
+        TData.dug_VWC_smooth,TData.evap_depth, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
+        TData.pressure_air_Pa,'albedo',TData.timed_albedo);
+if TwoSpot == true
+    formod_II = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+            FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
+            TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
+            TData.dug_VWC_smooth_II,TData.evap_depth_II, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
+            TData.pressure_air_Pa,'T_adj1',[2495,300.26],'T_adj2',[2521,301.95],'albedo',TData.timed_albedo_II);
 end
-% ***************
+
 %% Inputs to emcee
-err_all = [err; err_II];
-logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum(([Temps_to_fit-tima_formod_subset(theta,ind,formod); Temps_to_fit_II-tima_formod_subset(theta,ind,formod_II)]).^2./err_all.^2)};% a cell of function handles returning the log probality of a each outcome
-mccount = nstep*nwalkers;% What is the desired total number of monte carlo proposals.
-%                            This is the total number, -NOT the number per chain.
-
+if TwoSpot == true
+    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum(([TData.temps_to_fit(MData.ind)-tima_formod_subset(theta,MData.ind,formod); TData.temps_to_fit_II(MData.ind)-tima_formod_subset(theta,MData.ind,formod_II)]).^2./([TData.err(MData.ind); TData.err_II(MData.ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
+else
+    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum((TData.temps_to_fit(MData.ind)-tima_formod_subset(theta,MData.ind,formod)).^2./TData.err(MData.ind).^2)};% a cell of function handles returning the log probality of a each outcome
+end
 %% Run emcee
 % ***************
 % Named Parameter-Value pairs:
@@ -85,11 +113,12 @@ mccount = nstep*nwalkers;% What is the desired total number of monte carlo propo
 %   'Parallel': Run in ensemble of walkers in parallel. (default=false)
 %   'BurnIn': fraction of the chain that should be removed. (default=0)
 % ***************
-
+% – rejection rate is how often the new parameters are accepted. If this is far from ~30% (meaning inefficient), change the proposal step size (sigma),
+%e.g., rej rate too big , make step size smaller, if too small, make step size bigger
 tic
-[models,LogPs]=gwmcmc(minit,logPfuns,mccount,'BurnIn',burnin,'Parallel',true,'ThinChain',20);
+[models,LogPs]=gwmcmc(MData.minit,logPfuns,MData.mccount,'BurnIn',MData.burnin,'Parallel',MData.parallel,'ThinChain',MData.ThinChain);
 elapsedTime = toc
-if (size(models,1)<size(models,2))&&(ismatrix(models)), models=models'; end %Consider this behaviour further....
+if (size(models,1)<size(models,2))&&(ismatrix(models)), models=models'; end
 if ndims(models)==3
     models=models(:,:)'; 
 end
@@ -99,28 +128,38 @@ quant=quantile(models(:,r),[0.16,0.5,0.84]);
 RESULTS(:,r) = quant;
 end
 %%
-Result = formod(RESULTS(2,:));
-chi_v = sum(([Temps_to_fit-tima_formod_subset(RESULTS(2,:),ind,formod); Temps_to_fit_II-tima_formod_subset(RESULTS(2,:),ind,formod_II)]).^2./err_all.^2)/(2*length(Temps_to_fit)-length(Vars_init)); %reduced chi squared/(length(Temps_to_fit)-length(Vars_init)); %reduced chi squared
-TI =  sqrt(RESULTS(2,1)*density*Cp_std);
-TIp = sqrt(RESULTS(3,1)*density*Cp_std);
-TIm = sqrt(RESULTS(1,1)*density*Cp_std);
+Temparature_Result = formod(RESULTS(2,:));
+if TwoSpot == true
+    chi_v = sum(([TData.temps_to_fit(ind)-tima_formod_subset(RESULTS(2,:),ind,formod); TData.temps_to_fit_II(ind)-tima_formod_subset(RESULTS(2,:),ind,formod_II)]).^2./([err(ind); err_II(ind)]).^2)/(2*length(TData.temps_to_fit(ind))-length(MData.nvars));
+else
+    chi_v = sum((TData.temps_to_fit(ind)-tima_formod_subset(RESULTS(2,:),ind,formod)).^2./err(ind).^2)/(length(TData.temps_to_fit(ind))-length(MData.nvars));
+end
+TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
+TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
+TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 
 %% Print Log File 
-    c = fix(clock);
-    fname = sprintf('%02.0f%02.0f-%s_VWC_0.txt',c(4),c(5),date);
-    fid = fopen(fullfile(LogFile.folder, fname), 'wt');
-    if fid == -1
-      error('Cannot open log file.');
-    end
-    fprintf(fid,'Thermal model results of %s from Data: %s\nDatetime: %s Runtime: %0.1f s\n',TF_char,fullfile(LogFile.name),fname(1:end-4),elapsedTime);
-    fprintf(fid,'Nsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f\nInitial Inputs:\n',nstep,nwalkers,length(Layer_size_B));
-    for i = 1:length(Vars_init)
-        fprintf(fid,'%s = %0.4f\n',names{:,i},Vars_init(i));
-    end
-    fprintf(fid,'Reduced Chi Squared: %0.2f\n',chi_v);
-    fprintf(fid,'RESULTS [16th pctl, 50th pctl, 84th pctl]:\n');
-    for i = 1:length(Vars_init)
-        fprintf(fid,'%s = -%0.4f%% %0.4f +%0.4f%%\n',names{:,i},abs(RESULTS(1,i)-RESULTS(2,i))/RESULTS(2,i)*100,RESULTS(2,i),abs(RESULTS(3,i)-RESULTS(2,i))/RESULTS(2,i)*100);
-    end
-    fprintf(fid,'TI = %0.4f, %0.4f, %0.4f\n',TIm,TI,TIp);
-    fclose(fid);
+c = fix(clock);
+fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
+fid = fopen(fullfile(outDIR, fname), 'wt');
+if fid == -1
+  error('Cannot open log file.');
+end
+if TwoSpot == true
+    fprintf(fid,'1D thermal model results considering two locations (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
+else
+    fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
+end
+fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f\nInitial Inputs:\n',MData.dt,MData.mccount/size(MData.minit,2),size(MData.minit,2),length(MData.layer_size));
+names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'k-dry-300-lower (W/mK)' 'Depth Tansition (m)' };
+for i = 1:length(MData.vars_init)
+    fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
+end
+fprintf(fid,'Reduced Chi Squared: %0.2f\n',chi_v);
+fprintf(fid,'RESULTS [16th pctl, 50th pctl, 84th pctl]:\n');
+for i = 1:length(MData.vars_init)
+    fprintf(fid,'%s = %0.4f, %0.4f, %0.4f\n',names{:,i},RESULTS(:,i));
+end
+fprintf(fid,'TI = %0.4f, %0.4f, %0.4f\n',TIm,TI,TIp);
+fclose(fid);
+end
