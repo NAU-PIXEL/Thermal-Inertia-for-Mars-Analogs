@@ -51,6 +51,14 @@ end
 % opts.UseParallel = false;
 %% Initialize Walkers
 % ***************
+
+%For the old and the new model parameters, determine
+% the posterior (the log likelihood + the log prior) and find
+% R = Pnew/Pold (which is lnR = lnPnew - lnPold in log space)
+% – If R > 1 always accept the new parameters
+% – If R < 1 accept the new parameters with probability R
+% – Check how often the new parameters are accepted. If
+% this is far from ~30% (meaning inefficient), change the proposal step size (sigma)
 % Simulation Parameters
 nwalkers = 50; %100
 nstep = 5000; %10000
@@ -77,6 +85,7 @@ mccount = nstep*nwalkers;% What is the desired total number of monte carlo propo
 %   'Parallel': Run in ensemble of walkers in parallel. (default=false)
 %   'BurnIn': fraction of the chain that should be removed. (default=0)
 % ***************
+
 tic
 [models,LogPs]=gwmcmc(minit,logPfuns,mccount,'BurnIn',burnin,'Parallel',true,'ThinChain',20);
 elapsedTime = toc
