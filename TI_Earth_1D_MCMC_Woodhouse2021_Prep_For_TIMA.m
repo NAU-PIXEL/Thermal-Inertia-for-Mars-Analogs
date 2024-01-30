@@ -360,7 +360,6 @@ nvars = 6;
       MData.mccount = mccount;
       MData.minit = minit;
       MData.nvars=nvars;
-      MData.observed_TT = observed_TT;
       MData.parallel= false;
       MData.T_deep= T_Deep; 
       MData.T_start= T_Start;
