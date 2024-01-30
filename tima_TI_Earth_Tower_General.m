@@ -100,9 +100,9 @@ end
 
 %% Inputs to emcee
 if TwoSpot == true
-    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum(([TData.temps_to_fit(MData.ind)-tima_formod_subset(theta,MData.ind,formod); TData.temps_to_fit_II(MData.ind)-tima_formod_subset(theta,MData.ind,formod_II)]).^2./([TData.err(MData.ind); TData.err_II(MData.ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
+    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
 else
-    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum((TData.temps_to_fit(MData.ind)-tima_formod_subset(theta,MData.ind,formod)).^2./TData.err(MData.ind).^2)};% a cell of function handles returning the log probality of a each outcome
+    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)};% a cell of function handles returning the log probality of a each outcome
 end
 %% Run emcee
 % ***************
@@ -130,10 +130,11 @@ end
 %%
 Temparature_Result = formod(RESULTS(2,:));
 if TwoSpot == true
-    chi_v = sum(([TData.temps_to_fit(ind)-tima_formod_subset(RESULTS(2,:),ind,formod); TData.temps_to_fit_II(ind)-tima_formod_subset(RESULTS(2,:),ind,formod_II)]).^2./([err(ind); err_II(ind)]).^2)/(2*length(TData.temps_to_fit(ind))-length(MData.nvars));
+    chi_v = sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)]).^2./([err(MData.fit_ind); err_II(MData.fit_ind)]).^2)/(2*length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 else
-    chi_v = sum((TData.temps_to_fit(ind)-tima_formod_subset(RESULTS(2,:),ind,formod)).^2./err(ind).^2)/(length(TData.temps_to_fit(ind))-length(MData.nvars));
+    chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)).^2./err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 end
+Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density,0);
 TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
 TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
 TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);

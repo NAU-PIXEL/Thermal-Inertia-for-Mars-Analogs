@@ -31,6 +31,7 @@ Data_orig = struct2cell(load(fullfile(LogFile.folder, LogFile.name)));
 Data_orig = Data_orig{:,:};
 Orig_Temps_to_Fit = Data_orig.FLIR_DrySurf_Corr;
 Orig_err = (0.002.*(273.15+Orig_Temps_to_Fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
+observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
 mask = isnan(Orig_Temps_to_Fit);
 starts = [mask(1); (diff(mask)>0)];
 stops = [(diff(mask)<0);~mask(end)];
@@ -45,7 +46,11 @@ Data.mask(Data_orig.TIMESTAMP(starts & ~stops)) = 1; % leave singleton blocks al
 Data.mask(Data_orig.TIMESTAMP(stops & ~starts)) = -1;% leave singleton blocks alone
 Data.mask = cumsum(Data.mask);
 Data.mask(Data_orig.TIMESTAMP(stops)) = 1; % mark singleton blocks as missing
-ind = find(Data.mask==0);
+% ind = find(Data.mask==0);
+observed_TT(mask,:) = [];
+for times = 1:size(observed_TT,1)
+    [~,fit_ind(times)] = min(abs(datenum(Data.TIMESTAMP)-datenum(observed_TT.Time(times))));
+end
 % ***************
 
 % ***************
@@ -286,7 +291,7 @@ if sum(isnan(Test_Result))>1 || ~isreal(Test_Result)
 end
 figure
 hold on
-M(1) = fill([Data_orig.TIMESTAMP(~mask); flipud(Data_orig.TIMESTAMP(~mask))],[Orig_Temps_to_Fit(~mask)-Orig_err(~mask);flipud(Orig_Temps_to_Fit(~mask)+Orig_err(~mask))], [128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
+M(1) = fill([Data.TIMESTAMP(fit_ind); flipud(Data.TIMESTAMP(fit_ind))],[Orig_Temps_to_Fit(~mask)-Orig_err(~mask);flipud(Orig_Temps_to_Fit(~mask)+Orig_err(~mask))], [128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
 set(M(1), 'edgecolor', 'none');
 set(M(1), 'FaceAlpha', 0.5);
 G = plot(Data.TIMESTAMP,Soil_Temp,'b','DisplayName','Measured');
@@ -297,7 +302,7 @@ hold off
 xlabel('Time (hr)');
 ylabel('Surface Temperature (C)');
 legend([G,F,M(1),M(2)],'Interpreter','none')
-chi_v_test = sum((Temps_to_fit(ind)-Test_Result(ind)).^2./err(ind).^2)/(length(Temps_to_fit(ind))-length(Vars_init)); %reduced chi squared
+chi_v_test = sum((Temps_to_fit(fit_ind)-Test_Result(fit_ind)).^2./err(fit_ind).^2)/(length(Temps_to_fit(fit_ind))-length(Vars_init)); %reduced chi squared
 ttl = sprintf('TI top = %0.2f Jm^{-2}K^{-1}s^{-1/2}, chi^{2} = %0.2f', sqrt(Vars_init(1)*Cp_Deep*density),chi_v_test);%Calculate TI from results
 title(ttl,'Interpreter','tex','FontName','Ariel')
 
@@ -350,11 +355,12 @@ nvars = 6;
       MData.dt=dt;  
       MData.density=density; 
       MData.emissivity=emissivity;
-      MData.ind = ind;
+      MData.fit_ind = fit_ind;
       MData.layer_size=Layer_size_B;
       MData.mccount = mccount;
       MData.minit = minit;
       MData.nvars=nvars;
+      MData.observed_TT = observed_TT;
       MData.parallel= false;
       MData.T_deep= T_Deep; 
       MData.T_start= T_Start;
