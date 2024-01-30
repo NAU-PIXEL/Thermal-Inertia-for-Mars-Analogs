@@ -1,4 +1,4 @@
-function [] = tima_TI_Earth_Tower_General(TData,MData,outDIR,varargin)
+function [models,names] = tima_TI_Earth_Tower_General(TData,MData,outDIR,varargin)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
 %   observations taken in the field to fit 2D multi-parameter model to each pixel. Justification for
 %   approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
