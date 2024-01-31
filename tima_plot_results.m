@@ -3,7 +3,7 @@ p = inputParser;
 p.addRequired('TData',@isstruct);
 p.addRequired('MData',@isstruct);
 p.addRequired('models');
-p.addRequired('names',@ischar);
+p.addRequired('names',@iscellstr);
 p.addParameter('TwoSpot',false,@islogical);
 p.parse(TData, MData, models, names,varargin{:});
 p=p.Results;
