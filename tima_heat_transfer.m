@@ -277,12 +277,12 @@ for t = 2:length(air_temp_C)
         T(t,z) = T(t-1,z)+dT;
         if ~isempty(T_adj1)
             if dug_VWC(t,VWC_depth_indices(z)) > 0.03 && (t == T_adj1(1))
-                T(t,1) = T_adj1(2); %Value taken from T109 probe in watering can
+                T(t,z) = T_adj1(2); %Value taken from T109 probe in watering can
             end
         end
         if ~isempty(T_adj2)
             if dug_VWC(t,VWC_depth_indices(z)) > 0.02 && (t == T_adj2(1))
-                T(t,1) = T_adj2(2); %Value taken from T109 probe in watering can
+                T(t,z) = T_adj2(2); %Value taken from T109 probe in watering can
             end
         end
     end

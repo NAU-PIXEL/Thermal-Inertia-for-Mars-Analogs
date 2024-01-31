@@ -346,6 +346,7 @@ nvars = 6;
       TData.solarzenith_apparent=SolarZenith_Apparent;
       TData.timed_albedo=Timed_Albedo;
       TData.timed_albedo_II=Timed_Albedo_II;
+      TData.TIMESTAMP = Data.TIMESTAMP;
       TData.temps_to_fit=Temps_to_fit;
       TData.temps_to_fit_II=Temps_to_fit_II;
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
