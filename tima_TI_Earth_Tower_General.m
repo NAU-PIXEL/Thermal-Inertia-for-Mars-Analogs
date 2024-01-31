@@ -31,6 +31,7 @@ function [models,names] = tima_TI_Earth_Tower_General(TData,MData,outDIR,varargi
 %       TData.solarzenith_apparent:
 %       TData.timed_albedo: 
 %       TData.timed_albedo_II: 
+%       TData.TIMESTAMP: 
 %       TData.temps_to_fit: 
 %       TData.temps_to_fit_II: 
 %       TData.windspeed_horiz_ms: 

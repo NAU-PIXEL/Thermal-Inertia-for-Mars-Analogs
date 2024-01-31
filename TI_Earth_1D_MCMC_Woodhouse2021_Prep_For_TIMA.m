@@ -374,5 +374,6 @@ nvars = 6;
 
 % clearvars -except out_DIR TData MData
 c = fix(clock);                       
-fname = sprintf('WH2021Inputs_%02.0f%02.0f-%s.mat',c(4),c(5),date);
+%fname = sprintf('WH2021Inputs_%02.0f%02.0f-%s.mat',c(4),c(5),date);
+fname = sprintf('WH2021Inputs.mat');
 save([outDIR,'\',fname],'TData','MData','outDIR','-mat')
