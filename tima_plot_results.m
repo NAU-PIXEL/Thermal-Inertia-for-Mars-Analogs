@@ -4,7 +4,7 @@ p.addRequired('TData',@isstruct);
 p.addRequired('MData',@isstruct);
 p.addRequired('models');
 p.addRequired('names',@iscellstr);
-p.addParameter('Wetting',false,@ischar);
+p.addParameter('Wetting',false,@islogical);
 p.parse(TData, MData, models, names,varargin{:});
 p=p.Results;
 Wetting = p.Wetting;
@@ -41,26 +41,27 @@ if Wetting == true
             TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
             TData.dug_VWC_smooth_II,TData.evap_depth_II, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
             TData.pressure_air_Pa,'T_adj1',[2495,300.26],'T_adj2',[2521,301.95],'albedo',TData.timed_albedo_II);
-    [Result_Temp,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes_II(RESULTS(2,:));
+    [Result_Temp,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
 end
 
 figure
 hold on
 xlabel('Time (hr)');
 ylabel('Temperature (C)');
-F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit(MData.fit_ind)-TData.err(MData.fit_ind);flipud(TData.temps_to_fit(MData.fit_ind)+TData.err(MData.fit_ind))],[128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
+if Wetting == true
+    F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit_II(MData.fit_ind)-TData.err_II(MData.fit_ind);flipud(TData.temps_to_fit_II(MData.fit_ind)+TData.err_II(MData.fit_ind))],[128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
+    F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit_II(MData.fit_ind),1,'k.','DisplayName','FLIR Surface Observations');
+else
+    F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit(MData.fit_ind)-TData.err(MData.fit_ind);flipud(TData.temps_to_fit(MData.fit_ind)+TData.err(MData.fit_ind))],[128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
+    F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),1,'k.','DisplayName','FLIR Surface Observations');
+end
 set(F(1), 'edgecolor', 'none');
 set(F(1), 'FaceAlpha', 0.5);
-F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),1,'k.','DisplayName','FLIR Surface Observations');
-M = plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp(MData.fit_ind,1),'r', 'LineWidth', 2 ,'DisplayName','Surface Modeled');
+M = plot(TData.TIMESTAMP,Result_Temp(:,1),'r', 'LineWidth', 2 ,'DisplayName','Surface Modeled');
 
 hold off
 legend([F(2) M], 'Interpreter','none')
-if Wetting == true
-    chi_v = sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)/(2*length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
-else
-    chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
-end
+chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density,0);
 TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
 TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
@@ -83,7 +84,11 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
 figure
 hold on
 ylabel('Temperature (C)');
-plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),'k','LineWidth', 0.5,'DisplayName','FLIR Surface Observations');
+if Wetting == true
+    plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit_II(MData.fit_ind),'k','LineWidth', 0.5,'DisplayName','FLIR Surface Observations');
+else
+    plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),'k','LineWidth', 0.5,'DisplayName','FLIR Surface Observations');
+end
 title('FLIR Surface Observations')
 
 
@@ -91,17 +96,21 @@ figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP,q_conv,'g', 'LineWidth', 1,'DisplayName','sensible heat');
+title('Sensible')
 
 figure
 hold on
-ylabel('Temperature (C)');
+ylabel('W/mK');
 plot(TData.TIMESTAMP,Result_keff(:,1),'r', 'LineWidth', 1 ,'DisplayName','k_eff');
 hold off
+title('K_eff')
 
 figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP,q_rad,'m', 'LineWidth', 1 ,'DisplayName','Radiative heat');
+title('Radiative')
+
 
 figure
 for time = 1:length(TData.temps_to_fit)
@@ -110,13 +119,15 @@ end
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP,full_latent,'c', 'LineWidth', 1 ,'DisplayName','latent heat');
-hold on
-plot(TData.TIMESTAMP,q_latent(:,7),'b', 'LineWidth', 0.5 ,'DisplayName','latent heat');
-
+% hold on
+% plot(TData.TIMESTAMP,q_latent(:,7),'b', 'LineWidth', 0.5 ,'DisplayName','latent heat');
+title('Latent')
 
 figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP,q_G,'b', 'LineWidth', 1,'DisplayName','ground heat');
+title('Ground')
+
 
 end

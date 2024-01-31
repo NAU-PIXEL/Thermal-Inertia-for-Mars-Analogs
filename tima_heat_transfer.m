@@ -146,8 +146,8 @@ solar_zenith_apparent = p.solar_zenith_apparent;
 f_diff = p.f_diff;
 material = p.material;
 MappingMode = p.MappingMode;
-T_adj1 = p.T_adj1;
-T_adj2 = p.T_adj2;
+T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
+T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 
 clear p
 
