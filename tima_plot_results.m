@@ -4,10 +4,10 @@ p.addRequired('TData',@isstruct);
 p.addRequired('MData',@isstruct);
 p.addRequired('models');
 p.addRequired('names',@iscellstr);
-p.addParameter('TwoSpot',false,@islogical);
+p.addParameter('Wetting',false,@ischar);
 p.parse(TData, MData, models, names,varargin{:});
 p=p.Results;
-TwoSpot = p.TwoSpot;
+Wetting = p.Wetting;
 
 %% Make corner Plot
 % ***************
@@ -34,20 +34,14 @@ formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),Fi
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.dug_VWC_smooth,TData.evap_depth, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,'albedo',TData.timed_albedo);
-[Result_Temp,Result_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
-for time = 1:length(TData.temps_to_fit)
-    full_latent(time) = sum(Result_latent(time,:));
-end
-if TwoSpot == true
-    formod_fluxes_II = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
+[Result_Temp,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
+if Wetting == true
+    formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
             FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
             TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
             TData.dug_VWC_smooth_II,TData.evap_depth_II, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
             TData.pressure_air_Pa,'T_adj1',[2495,300.26],'T_adj2',[2521,301.95],'albedo',TData.timed_albedo_II);
-    [Result_Temp_II,Result_latent_II,Result_keff_II,q_conv_II,q_rad_II,q_G_II] = formod_fluxes_II(RESULTS(2,:));
-    for time = 1:length(TData.temps_to_fit)
-        full_latent_II(time) = sum(Result_latent_II(time,:));
-    end
+    [Result_Temp,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes_II(RESULTS(2,:));
 end
 
 figure
@@ -61,11 +55,11 @@ F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),
 M = plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp(MData.fit_ind,1),'r', 'LineWidth', 2 ,'DisplayName','Surface Modeled');
 
 hold off
-legend([F(12) M], 'Interpreter','none')
-if TwoSpot == true
-    chi_v = sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)/(2*length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
+legend([F(2) M], 'Interpreter','none')
+if Wetting == true
+    chi_v = sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)/(2*length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 else
-    chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
+    chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 end
 Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density,0);
 TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
@@ -111,11 +105,14 @@ plot(TData.TIMESTAMP,q_rad,'m', 'LineWidth', 1 ,'DisplayName','Radiative heat');
 
 figure
 for time = 1:length(TData.temps_to_fit)
-    full_latent(time) = sum(Result_latent(time,:));
+    full_latent(time) = sum(q_latent(time,:));
 end
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP,full_latent,'c', 'LineWidth', 1 ,'DisplayName','latent heat');
+hold on
+plot(TData.TIMESTAMP,q_latent(:,7),'b', 'LineWidth', 0.5 ,'DisplayName','latent heat');
+
 
 figure
 hold on
