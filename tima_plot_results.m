@@ -54,7 +54,7 @@ figure
 hold on
 xlabel('Time (hr)');
 ylabel('Temperature (C)');
-F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit(MData.fit_ind)-TData.err(MData.fit_ind);flipud(TData.temps_to_fit(MData.fit_ind)+TData.err(MData.fit_ind))],[128 193 219].255,'Linestyle','none','DisplayName','FLIR error');
+F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit(MData.fit_ind)-TData.err(MData.fit_ind);flipud(TData.temps_to_fit(MData.fit_ind)+TData.err(MData.fit_ind))],[128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
 set(F(1), 'edgecolor', 'none');
 set(F(1), 'FaceAlpha', 0.5);
 F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),1,'k.','DisplayName','FLIR Surface Observations');
