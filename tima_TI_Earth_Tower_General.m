@@ -152,7 +152,7 @@ if TwoSpot == true
 else
     fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
 end
-fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f\nInitial Inputs:\n',MData.dt,MData.mccount/size(MData.minit,2),size(MData.minit,2),length(MData.layer_size));
+fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.mccount/size(MData.minit,2),size(MData.minit,2),length(MData.layer_size),MData.layer_size(1));
 names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'k-dry-300-lower (W/mK)' 'Depth Tansition (m)' };
 for i = 1:length(MData.vars_init)
     fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
