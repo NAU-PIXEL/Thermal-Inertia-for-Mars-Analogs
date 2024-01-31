@@ -156,7 +156,7 @@ WindSpeed_ms_30_smooth = smoothdata(WindSpeed_ms_30,'gaussian',Smooth_Window); %
 
 % Buried VWC probe data from nearest probe
 % VWC_dug_depth = [5,10,20,30,40,50]; %Depth in cm of probe elements
-VWC_dug_depth = [0.01,5,15,25,35,45]; %Depth in cm of probe elements
+VWC_dug_depth = [0.01,5,15,25,35,45]./100; %Depth in m of probe elements
 
 
 %Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
@@ -220,10 +220,10 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
         error('Layer 1 reached too big at over 10 cm')
     end
     count = 2;
-    [M,VWC_depth_indices(1)] = min(abs(Layer_size_B-VWC_dug_depth./100));
+    [M,VWC_depth_indices(1)] = min(abs(Layer_size_B-VWC_dug_depth));
     while sum(Layer_size_B) < Depth_Max
       Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters)
-      [M,VWC_depth_indices(count)] = min(abs(sum(Layer_size_B)-VWC_dug_depth./100));
+      [M,VWC_depth_indices(count)] = min(abs(sum(Layer_size_B)-VWC_dug_depth));
       count = count+1;
     end
     % ***************
@@ -316,11 +316,11 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
 % – Check how often the new parameters are accepted. If
 % this is far from ~30% (meaning inefficient), change the proposal step size (sigma)
 % Simulation Parameters
-nwalkers = 10; %100
-nstep = 100; %10000
+nwalkers = 50; %100
+nstep = 1000; %10000
 mccount = nstep*nwalkers;% This is the total number, -NOT the number per chain.% What is the desired total number of monte carlo proposals.
 burnin = 0.5; %fraction of results to omit
-sigma = 10^-3; % dictates sinsitivity of walkers to change
+sigma = 10^-2; % dictates sinsitivity of walkers to change
 rng(49)  % For reproducibility
 minit = zeros(length(Vars_init),nwalkers);
 for i = 1:nwalkers
@@ -361,7 +361,7 @@ nvars = 6;
       MData.mccount = mccount;
       MData.minit = minit;
       MData.nvars=nvars;
-      MData.parallel= false;
+      MData.parallel= true;
       MData.T_deep= T_Deep; 
       MData.T_start= T_Start;
       MData.T_std=T_std;
@@ -370,7 +370,7 @@ nvars = 6;
       MData.notes = 'WH2021 Wet & Dry';
       MData.vars_init = Vars_init;
 
-      outDIR='X:\akoeppel\TI_EARTH_1D\Woodhouse2021';
+      outDIR='.\Example Data';%X:\akoeppel\TI_EARTH_1D\Woodhouse2021';
 
 % clearvars -except out_DIR TData MData
 c = fix(clock);                       
