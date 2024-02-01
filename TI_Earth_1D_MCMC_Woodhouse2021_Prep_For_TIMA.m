@@ -165,8 +165,8 @@ check = 0.*fspace;
 %Define Lower Boundary conditions
 T_Deep = mean([max(Soil_Temp_C_Dry),min(Soil_Temp_C_Dry)])+273.15; %Static mean of near surf temp
 
-density_plus = density + 997*mean(Dug_VWC_smooth(:,end),'omitnan'); %Dry density + water content
-Cp_Deep = tima_specific_heat_model_hillel(density,density_plus,mean(Dug_VWC_smooth(:,end),'omitnan'));
+density_plus = density + 997*mean(Dug_VWC(:,end),'omitnan'); %Dry density + water content
+Cp_Deep = tima_specific_heat_model_hillel(density,density_plus,mean(Dug_VWC(:,end),'omitnan'));
 % ***************
 RLAY = 1.3; %1.15 Thickness geometric multiplier of layers beneath Christian used 1.3
 % ***************
@@ -217,7 +217,7 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     % ***************
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures
-    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC_Dry_smooth,VWC_depth_indices,Humidity,NDAYS,material);
+    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC_interp,Humidity,NDAYS,material);
     Subsurface_Temperatures_Running(:,:) = Subsurface_Temperatures(1,:,:)-273.15; %Set up array using first day
     for D = 2:size(Subsurface_Temperatures,1) % for plotting
         TEMP(:,:) = Subsurface_Temperatures(D,:,:)-273.15;
@@ -319,8 +319,8 @@ nvars = 6;
 %   Time data - struct of timeseries data variables 
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
-      TData.dug_VWC_interp=Dug_VWC_interp;
-      TData.dug_VWC_II_interp=Dug_VWC_II_interp;
+      TData.VWC_column=Dug_VWC_interp;
+      TData.VWC_II_column=Dug_VWC_II_interp;
       TData.err = err;
       TData.err_II = err_II;
       TData.evap_depth=evap_depth;
@@ -358,7 +358,6 @@ nvars = 6;
       MData.T_start= T_Start;
       MData.T_std=T_std;
       MData.ThinChain=20; %[20]
-      MData.VWC_depth_indices = VWC_depth_indices;
       MData.notes = 'WH2021 Wet & Dry';
       MData.vars_init = Vars_init;
 

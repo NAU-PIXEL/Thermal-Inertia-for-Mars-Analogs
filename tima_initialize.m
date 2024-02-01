@@ -1,4 +1,4 @@
-function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,VWC_depth_indices,RH,NDAYS,material)
+function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS,material)
 %***************
 % TIMA_INITIALIZE
 %   Simple version of Heat tansfer model used to estimate a realistic subsurface 
@@ -57,7 +57,7 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
     temperature_column_K(:,:,NLAY) = T_deep; %Constant lower boundary temp
     for ind = 2:NLAY-1
         temperature_column_K(1,1,ind) = Soil_Temp_K(1)+(T_deep-Soil_Temp_K(1))*(sum(layer_size(1:ind))/Depth_Max);
-        k(ind) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(1,1,ind),T_std,VWC_column(1,VWC_depth_indices(end)),theta_k,m,RH(1),material);
+        k(ind) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(1,1,ind),T_std,VWC_column(1,end),theta_k,m,RH(1),material);
     end
     % ***************
     
@@ -66,30 +66,30 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
     for day = 1:NDAYS %Day loop
         temperature_column_K(day,:,1) = Soil_Temp_K(1:Day_Dur); %Layer 1 temp = observed
         for t = 1:Day_Dur %Minute loop
-            k(1) = 1/(VWC_column(t,VWC_depth_indices(1))/k_H2O+(k_dry_std*sqrt(temperature_column_K(day,t,1)/T_deep))^-1);
-            for i = 2:NLAY-1 %layer loop
+            k(1) = 1/(VWC_column(t,1)/k_H2O+(k_dry_std*sqrt(temperature_column_K(day,t,1)/T_deep))^-1);
+            for z = 2:NLAY-1 %layer loop
                 if t == 1 && day > 1 %First step in day (requires pulling from previous day)
-                    rho = rho_dry + rho_H2O*VWC_column(Day_Dur,VWC_depth_indices(i)); %H2O dep
-                    Cp = tima_specific_heat_model_hillel(rho_dry,rho,VWC_column(Day_Dur,VWC_depth_indices(i)));
-                    k(i) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day-1,end,i),T_std,VWC_column(Day_Dur,VWC_depth_indices(i)),theta_k,m,RH(Day_Dur),material);
+                    rho = rho_dry + rho_H2O*VWC_column(Day_Dur,z); %H2O dep
+                    Cp = tima_specific_heat_model_hillel(rho_dry,rho,VWC_column(Day_Dur,z));
+                    k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day-1,end,z),T_std,VWC_column(Day_Dur,z),theta_k,m,RH(Day_Dur),material);
                     %Subsurface Multip Factors (Kieffer, 2013)
-                    F1 = 2*dt*k(i)/((Cp*rho_dry*layer_size(i)^2)*(1+layer_size(i+1)/layer_size(i)*k(i)/k(i+1)));
-                    F3 = (1+(layer_size(i+1)*k(i))/(layer_size(i)*k(i+1)))/(1+(layer_size(i-1)/layer_size(i)*k(i)/k(i-1)));
+                    F1 = 2*dt*k(z)/((Cp*rho_dry*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
+                    F3 = (1+(layer_size(z+1)*k(z))/(layer_size(z)*k(z+1)))/(1+(layer_size(z-1)/layer_size(z)*k(z)/k(z-1)));
                     F2 = -(1 + F3);
                     %Temperature response
-                    dT = F1*(temperature_column_K(day-1,end,i+1)+F2*temperature_column_K(day-1,end,i)+F3*temperature_column_K(day-1,end,i-1));
-                    temperature_column_K(day,t,i)  = temperature_column_K(day-1,end,i) + dT;
+                    dT = F1*(temperature_column_K(day-1,end,z+1)+F2*temperature_column_K(day-1,end,z)+F3*temperature_column_K(day-1,end,z-1));
+                    temperature_column_K(day,t,z)  = temperature_column_K(day-1,end,z) + dT;
                 elseif t >= 2 %All other steps
-                    rho = rho_dry + rho_H2O*VWC_column(t-1,VWC_depth_indices(i)); %H2O dep
-                    Cp = tima_specific_heat_model_hillel(rho_dry,rho,VWC_column(t-1,VWC_depth_indices(i)));
-                    k(i) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day,t-1,i),T_std,VWC_column(t-1,VWC_depth_indices(i)),theta_k,m,RH(t-1),material);
+                    rho = rho_dry + rho_H2O*VWC_column(t-1,z); %H2O dep
+                    Cp = tima_specific_heat_model_hillel(rho_dry,rho,VWC_column(t-1,z));
+                    k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day,t-1,z),T_std,VWC_column(t-1,z),theta_k,m,RH(t-1),material);
                     %Subsurface Multip Factors (Kieffer, 2013)
-                    F1 = 2*dt*k(i)/((Cp*rho_dry*layer_size(i)^2)*(1+layer_size(i+1)/layer_size(i)*k(i)/k(i+1)));
-                    F3 = (1+(layer_size(i+1)*k(i))/(layer_size(i)*k(i+1)))/(1+(layer_size(i-1)/layer_size(i)*k(i)/k(i-1)));
+                    F1 = 2*dt*k(z)/((Cp*rho_dry*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
+                    F3 = (1+(layer_size(z+1)*k(z))/(layer_size(z)*k(z+1)))/(1+(layer_size(z-1)/layer_size(z)*k(z)/k(z-1)));
                     F2 = -(1 + F3);
                     %Temperature response
-                    dT = F1*(temperature_column_K(day,t-1,i+1)+F2*temperature_column_K(day,t-1,i)+F3*temperature_column_K(day,t-1,i-1));
-                    temperature_column_K(day,t,i) = temperature_column_K(day,t-1,i)+dT;
+                    dT = F1*(temperature_column_K(day,t-1,z+1)+F2*temperature_column_K(day,t-1,z)+F3*temperature_column_K(day,t-1,z-1));
+                    temperature_column_K(day,t,z) = temperature_column_K(day,t-1,z)+dT;
                 end                 
             end
         end
