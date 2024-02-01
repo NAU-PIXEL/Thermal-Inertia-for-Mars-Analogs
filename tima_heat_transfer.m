@@ -238,9 +238,9 @@ for t = 2:length(air_temp_C)
 %           k_H2O = 1.1e-05*(T(t-1,1)- 273.15).^2 + 0.00234*(T(t-1,1)- 273.15) + 0.552; %Bristow 2002, temp dep
         if z < D_z
             if sum(layer_size(1:z)) <= evap_depth(t) %Wang 2016 inflection point
-                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),T(t-1,z-1),T(t-1,z),dug_VWC(t-1,z));
+                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
             else
-                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),T(t-1,z-1),T(t-1,z),dug_VWC(t-1,z));
+                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
                 q_evap_z = 0; %Evap_Coeff
             end
             k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH, material);
@@ -257,9 +257,9 @@ for t = 2:length(air_temp_C)
                 Soil_RH = 1;
             else
                 if sum(layer_size(1:z)) <= evap_depth(t)
-                    [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),T(t-1,z-1),T(t-1,z),dug_VWC(t-1,z));
+                    [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
                 else
-                    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),T(t-1,z-1),T(t-1,z),dug_VWC(t-1,z));
+                    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
                     q_evap_z = 0; %Evap_Coeff
                 end
                 k(z) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH,material);
