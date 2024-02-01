@@ -109,17 +109,16 @@ f_diff = Data.DF;
 SolarZenith_Apparent = 90-Data.SolarElevationCorrectedForAtmRefractiondeg;
 Aspect_cwfromS = 0;
 
-
-VWC_Smooth_Window = 100/(dt/60);
 Dug_VWC_Wet(:,1) = Data.VWC6; %In Situ near surf Soil Moisture from nearest WET probe
 Dug_VWC_Wet(:,2) = Data.VWC_101;
 Dug_VWC_Wet(:,3) = Data.VWC_201;
 Dug_VWC_Wet(:,4) = Data.VWC_301;
 Dug_VWC_Wet(:,5) = Data.VWC_401;
 Dug_VWC_Wet(:,6) = Data.VWC_501;
-Dug_VWC_Wet_smooth = smoothdata(Dug_VWC_Wet,'gaussian',VWC_Smooth_Window);
-SoilVWC_Wet_smooth = smoothdata(Data.VWC6,'gaussian',Smooth_Window); %VWC is discretized, so this smoothes it
-Dug_VWC_Wet_smooth(:,1) = SoilVWC_Wet_smooth;
+Temps_to_fit_II=Data.FLIR_WetSurf_Corr; %Define Wet fitting data here
+Timed_Albedo_II = Data.FLIR_VIS_albedo_wet;
+Soil_Temp_II = Soil_Temp_C_Wet;
+Dug_VWC_II = Dug_VWC_Wet;
 
 Dug_VWC_Dry(:,1) = Data.VWC_56; %In Situ near surf Soil Moisture from nearest DRY probe
 Dug_VWC_Dry(:,2) = Data.VWC_106;
@@ -127,24 +126,10 @@ Dug_VWC_Dry(:,3) = Data.VWC_203;
 Dug_VWC_Dry(:,4) = Data.VWC_303;
 Dug_VWC_Dry(:,5) = Data.VWC_403;
 Dug_VWC_Dry(:,6) = Data.VWC_503;
-Dug_VWC_Dry_smooth = smoothdata(Dug_VWC_Dry,'gaussian',VWC_Smooth_Window);
-% SoilVWC_Dry_smooth = smoothdata(Data.VWC2,'gaussian',Smooth_Window); %VWC is discretized, so this smoothes it
-% Dug_VWC_Dry_smooth(:,2) = SoilVWC_Dry_smooth;
-
-% if Surface == 1
-TF_char = 'Data.FLIR_WetandDrySurf_Corr'
-    Temps_to_fit_II=Data.FLIR_WetSurf_Corr; %Define Wet fitting data here
-    Timed_Albedo_II = Data.FLIR_VIS_albedo_wet;
-    Soil_Temp_II = Soil_Temp_C_Wet;
-    Dug_VWC_smooth_II = Dug_VWC_Wet_smooth;
-    Dug_VWC_II = Dug_VWC_Wet;
-% else
-    Temps_to_fit=Data.FLIR_DrySurf_Corr; %Define Wet fitting data here
-    Timed_Albedo = Data.FLIR_VIS_albedo_dry;
-    Soil_Temp = Soil_Temp_C_Dry;
-    Dug_VWC_smooth = Dug_VWC_Dry_smooth;
-    Dug_VWC = Dug_VWC_Dry;
-% end
+Temps_to_fit=Data.FLIR_DrySurf_Corr; %Define Wet fitting data here
+Timed_Albedo = Data.FLIR_VIS_albedo_dry;
+Soil_Temp = Soil_Temp_C_Dry;
+Dug_VWC = Dug_VWC_Dry;
 
 MaxVWC = max(max(Dug_VWC_Wet)); %Saturation at site of wetting;
 theta_E = 0.75*MaxVWC;%max(Data.VWC1); %Saturation at site of wetting;
@@ -162,34 +147,12 @@ VWC_dug_depth = [0.01,5,15,25,35,45]./100; %Depth in m of probe elements
 
 
 %Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
-err = (0.002.*(273.15+Temps_to_fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
-% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
+err = (0.002.*(273.15+Temps_to_fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
 err_II = (0.002.*(273.15+Temps_to_fit_II)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K
 N_VWC = length(VWC_dug_depth);
-evap_depth_wet = ones(size(Temps_to_fit));
-evap_depth_dry = ones(size(Temps_to_fit));
-for t = 1:length(Temps_to_fit)
-    for z = 1:N_VWC-1
-        dVWC(z) = (Dug_VWC_Wet_smooth(t,z+1)-Dug_VWC_Wet_smooth(t,z))./(VWC_dug_depth(z+1)-VWC_dug_depth(z));
-        if z == 1 && Dug_VWC_Wet_smooth(t,1) > 0 && dVWC(1)<= 0
-            evap_depth_wet(t) = VWC_dug_depth(1);
-            break
-        elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
-            evap_depth_wet(t) = VWC_dug_depth(z);
-            break
-        end
-    end
-    for z = 1:N_VWC-1
-        dVWC(z) = (Dug_VWC_Dry_smooth(t,z+1)-Dug_VWC_Dry_smooth(t,z))./(VWC_dug_depth(z+1)-VWC_dug_depth(z));
-        if z == 1 && Dug_VWC_Dry_smooth(t,1) > 0 && dVWC(1)<= 0
-            evap_depth_dry(t) = VWC_dug_depth(1);
-            break
-        elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
-            evap_depth_dry(t) = VWC_dug_depth(z);
-            break
-        end
-    end
-end
+evap_depth_II = ones(size(Temps_to_fit));
+evap_depth = ones(size(Temps_to_fit));
+
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
 Vars_init = [0.17;0.73;410;3100;0.35;0.06];%[0.15;0.23;0.992;420;2700;0.66;0.07];
 names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
@@ -221,12 +184,35 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     if Layer_size_B(1) > 0.10
         error('Layer 1 reached too big at over 10 cm')
     end
-    count = 2;
-    [M,VWC_depth_indices(1)] = min(abs(Layer_size_B-VWC_dug_depth));
     while sum(Layer_size_B) < Depth_Max
-      Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters)
-      [M,VWC_depth_indices(count)] = min(abs(sum(Layer_size_B)-VWC_dug_depth));
-      count = count+1;
+      Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters) depth_grid = FLAY*RLAY.^(0:n-1);
+    end
+    depth_grid = cumsum(Layer_size_B);
+    [X,Y] = meshgrid(VWC_dug_depth,1:length(Air_Temp_C));
+    [Xq,Yq] = meshgrid(depth_grid,1:length(Air_Temp_C));
+    Dug_VWC_interp = interp2(X,Y,Dug_VWC_Dry,Xq,Yq,'makima');Dug_VWC_interp(Dug_VWC_interp<0)=0;
+    Dug_VWC_II_interp = interp2(X,Y,Dug_VWC_Wet,Xq,Yq,'makima');Dug_VWC_II_interp(Dug_VWC_II_interp<0)=0;
+    for t = 1:length(Temps_to_fit)
+        for z = 1:N_VWC-1
+            dVWC(z) = (Dug_VWC_II_interp(t,z+1)-Dug_VWC_II_interp(t,z))./(depth_grid(z+1)-depth_grid(z));
+            if z == 1 && Dug_VWC_II_interp(t,1) > 0 && dVWC(1)<= 0
+                evap_depth_II(t) = depth_grid(1);
+                break
+            elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
+                evap_depth_II(t) = depth_grid(z);
+                break
+            end
+        end
+        for z = 1:N_VWC-1
+            dVWC(z) = (Dug_VWC_interp(t,z+1)-Dug_VWC_interp(t,z))./(depth_grid(z+1)-depth_grid(z));
+            if z == 1 && Dug_VWC_interp(t,1) > 0 && dVWC(1)<= 0
+                evap_depth(t) = depth_grid(1);
+                break
+            elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
+                evap_depth(t) = depth_grid(z);
+                break
+            end
+        end
     end
     % ***************
     % Initialize Temperatures
@@ -243,13 +229,13 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
-        Dug_VWC_smooth,evap_depth_dry,VWC_depth_indices,Humidity,emissivity,...
+        Dug_VWC_interp,evap_depth,Humidity,emissivity,...
         Pressure_air_Pa,'albedo',Timed_Albedo);
 
     formod_II = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
-        Dug_VWC_smooth_II,evap_depth_wet,VWC_depth_indices,Humidity,emissivity,...
+        Dug_VWC_II_interp,evap_depth_II,Humidity,emissivity,...
         Pressure_air_Pa,'T_adj1',T_adj1,'T_adj2',T_adj2,'albedo',Timed_Albedo_II);
 
     Test_Result = formod(Vars_init(:));
@@ -333,12 +319,13 @@ nvars = 6;
 %   Time data - struct of timeseries data variables 
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
-      TData.dug_VWC_smooth=Dug_VWC_smooth;
-      TData.dug_VWC_smooth_II=Dug_VWC_smooth_II;
+      TData.dug_VWC_interp=Dug_VWC_interp;
+      TData.dug_VWC_II_interp=Dug_VWC_II_interp;
       TData.err = err;
       TData.err_II = err_II;
-      TData.evap_depth=evap_depth_dry;
-      TData.evap_depth_II =evap_depth_wet;
+      TData.evap_depth=evap_depth;
+      TData.evap_depth_II =evap_depth_II;
+      TData.humidity=Humidity;
       TData.humidity=Humidity;
       TData.pressure_air_Pa=Pressure_air_Pa;
       TData.r_long_upper=R_Long_Upper;
