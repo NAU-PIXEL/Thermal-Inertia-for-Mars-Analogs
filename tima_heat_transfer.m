@@ -126,7 +126,7 @@ p.addParameter('solar_zenith_apparent',[],@(x)isnumeric(x)&&isvector(x));
 p.addParameter('f_diff',[],@(x)isnumeric(x)&&isvector(x));
 p.addParameter('shadow_data',[],@isnumeric);
 p.addParameter('shadow_time_ind',[],@isnumeric);
-p.addParameter('material','basalt',@ischar);
+p.addParameter('material',"basalt",@ischar);
 p.addParameter('MappingMode',false,@islogical);
 p.addParameter('T_adj1',[],@(x)isnumeric(x)&&length(x)==2);
 p.addParameter('T_adj2',[],@(x)isnumeric(x)&&length(x)==2);
@@ -148,8 +148,6 @@ material = p.material;
 MappingMode = p.MappingMode;
 T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
 T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
-
-clear p
 
 % ***************
 
@@ -250,7 +248,7 @@ for t = 2:length(air_temp_C)
             Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,VWC_depth_indices(z)));
                         %Subsurface Multip Factors (Kieffer, 2013)
         else
-            if material == 'ice'
+            if material == "ice"
                 k(z) = kay_lower;
                 rho = 1500; %kg/m^3
                 Cp = Cp_lower;%2000; %J/kgK
@@ -269,6 +267,7 @@ for t = 2:length(air_temp_C)
                 Cp = tima_specific_heat_model_hillel(rho_dry_lower,rho,dug_VWC(t-1,VWC_depth_indices(z)));
             end
         end
+        %Subsurface Multip Factors (Kieffer, 2013)
         F1 = 2*dt*k(z)/((Cp*rho*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
         F3 = (1+(layer_size(z+1)/layer_size(z))*(k(z)/k(z+1)))/(1+(layer_size(z-1)/layer_size(z))*(k(z)/k(z-1)));
         F2 = -(1 + F3);

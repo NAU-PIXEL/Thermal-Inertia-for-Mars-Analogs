@@ -32,7 +32,7 @@ function [logp] = tima_ln_prior(FitParams,varargin)
     p.addOptional('k_lower_max',3.7, @(x) isvector(x) && isnumeric(x) && (x<10) && (x>0)); 
     p.addOptional('depth_min',0, @(x) isvector(x) && isnumeric(x) && (x>=0));
     p.addOptional('depth_max',1.3, @(x) isvector(x) && isnumeric(x) && (x<=1.3) && (x>0));
-    p.addOptional('m_min',0, @(x) isvector(x) && isnumeric(x) && (x>=0));
+    p.addOptional('m_min',0.01, @(x) isvector(x) && isnumeric(x) && (x>=0));
     p.addOptional('m_max',1.3, @(x) isvector(x) && isnumeric(x) && (x<=1.3) && (x>0));
     p.addOptional('CH_min',1, @(x) isvector(x) && isnumeric(x) && (x>=0));
     p.addOptional('CH_max',10000, @(x) isvector(x) && isnumeric(x) && (x>0));

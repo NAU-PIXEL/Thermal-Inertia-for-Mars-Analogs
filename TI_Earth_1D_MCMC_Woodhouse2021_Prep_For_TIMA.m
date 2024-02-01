@@ -73,6 +73,8 @@ material = 'basalt';
 MappingMode = 0;
 NDAYS = 20;
 Depth_Max = 0.5;
+T_adj1=[2495,300.26];
+T_adj2=[2521,301.95];
 % ***************
 
 %% Extracting Variables
@@ -190,7 +192,7 @@ for t = 1:length(Temps_to_fit)
 end
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
 Vars_init = [0.17;0.73;410;3100;0.35;0.06];%[0.15;0.23;0.992;420;2700;0.66;0.07];
-names = {'k-upper''Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
+names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 
 %% Routine to set up boundary and initial conditions for model
@@ -248,7 +250,7 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
         Dug_VWC_smooth_II,evap_depth_wet,VWC_depth_indices,Humidity,emissivity,...
-        Pressure_air_Pa,'T_adj1',[2495,300.26],'T_adj2',[2521,301.95],'albedo',Timed_Albedo_II);
+        Pressure_air_Pa,'T_adj1',T_adj1,'T_adj2',T_adj2,'albedo',Timed_Albedo_II);
 
     Test_Result = formod(Vars_init(:));
     if isreal(Test_Result) && abs(max(Test_Result)-max(Temps_to_fit)) < 50 && sum(sum(max(Subsurface_Temperatures) > (273.15+max(Temps_to_fit(1:(1440/(dt/60))))))) == 0 && sum(isnan(Test_Result)) == 0 %indicators of stability
@@ -358,10 +360,13 @@ nvars = 6;
       MData.emissivity=emissivity;
       MData.fit_ind = fit_ind;
       MData.layer_size=Layer_size_B;
+      MData.material=material;
       MData.mccount = mccount;
       MData.minit = minit;
       MData.nvars=nvars;
       MData.parallel= true;
+      MData.T_adj1=T_adj1;
+      MData.T_adj2=T_adj2;
       MData.T_deep= T_Deep; 
       MData.T_start= T_Start;
       MData.T_std=T_std;

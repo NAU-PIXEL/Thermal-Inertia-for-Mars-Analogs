@@ -52,8 +52,8 @@ function [k_eff] = tima_conductivity_model_lu2007(k_dry_std,Soil_Temperature,T_s
 % T_std = 300; % Temperature standard for thermal conductivity (K)
 
 % Air
-k_air = 0.024+7.73E-5.*(Soil_Temperature-273.15) - 2.6E-8.*(Soil_Temperature-273.15).^2 - 3E-05.*exp(0.0591.*(Soil_Temperature-273.15)).*Soil_RH; %Bristow 2002/Campbell 1994 with Tsilingiris 2008 Fig 3 assuming soil is equilibrated with air
-k_air_avg = 0.024+7.73E-5.*(T_std-273.15)- 2.6E-8.*(T_std-273.15)^2; %Thermal conductivity of air at zero moisture and standard temperature
+k_air = 0.024+7.73E-5.*(Soil_Temperature-273.15)-2.6E-8.*(Soil_Temperature-273.15).^2-3E-05.*exp(0.0591.*(Soil_Temperature-273.15)).*Soil_RH; %Bristow 2002/Campbell 1994 with Tsilingiris 2008 Fig 3 assuming soil is equilibrated with air
+k_air_avg = 0.024+7.73E-5.*(T_std-273.15)-2.6E-8.*(T_std-273.15)^2; %Thermal conductivity of air at zero moisture and standard temperature
 k_dry_mod = 2*k_air.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 - independent of composition and grain size
 k_dry_mod_avg = 2*k_air_avg.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 R > 0.98 within range 0.01-0.035 - independent of composition and grain size
 if k_dry_mod<k_air
@@ -66,22 +66,22 @@ k_dry = k_dry_std*k_dry_mod/k_dry_mod_avg; % Since Piquex 2009a Fig 8 was modele
 
 k_H2O = -1.1e-5.*(Soil_Temperature - 273.15).^2 + 0.00234.*(Soil_Temperature - 273.15) + 0.552; %Bristow 2002 or 0.59 from Zhang and Wang 2017 or 0.6096 from Haigh 2012
 % k-bulk-dry from theory
-if material == 'basalt'
+if material == "basalt"
     k_solid = 1.18 + 474/(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
 % Roughly = 2.2, Bristow, 2002
-elseif material == 'amorphous'
+elseif material == "amorphous"
     k_solid = 0.6924 + 0.0015*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'granite'
+elseif material == "granite"
     k_solid = 2.0;
     % Roughly = 2.0 (granite), Bristow, 2002
-elseif material == 'quartz'
+elseif material == "quartz"
     k_solid = 7.69; %(horai 1971)
-elseif material == 'clay'
+elseif material == "clay"
     k_solid = 2.9;
     % Roughly = 2.9 (clay), Bristow, 2002
-elseif material == 'salt'
+elseif material == "salt"
     k_solid = -2.11 + 2960/(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'ice'
+elseif material == "ice"
     k_solid = 2.18;
     % Roughly = 2.18, Bristow, 2002
 else
