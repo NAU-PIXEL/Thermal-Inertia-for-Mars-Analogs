@@ -181,7 +181,7 @@ for t = 2:length(air_temp_C)
     
     %*********Specific heat***********
     rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,1); %Dry density + water content
-    Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,1));
+    Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,1),material);
     %****************************************
 
     %*********SENSIBLE HEAT***********
@@ -245,7 +245,7 @@ for t = 2:length(air_temp_C)
             end
             k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH, material);
             rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,z); %H2O dep
-            Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,z));
+            Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);
                         %Subsurface Multip Factors (Kieffer, 2013)
         else
             if material == "ice"
@@ -264,7 +264,7 @@ for t = 2:length(air_temp_C)
                 end
                 k(z) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH,material);
                 rho = rho_dry_lower + rho_H2O*dug_VWC(t-1,z); %H2O dep
-                Cp = tima_specific_heat_model_hillel(rho_dry_lower,rho,dug_VWC(t-1,z));
+                Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);
             end
         end
         %Subsurface Multip Factors (Kieffer, 2013)

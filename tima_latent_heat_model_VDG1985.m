@@ -43,6 +43,7 @@ function [q_latent,soil_RH] = tima_latent_heat_model_VDG1985(CE,theta_E,pressure
     R = 8.31446; %J/(K·mol), gas constant
     Md = 0.0289652; % kg/mol, Dry air
     Mv = 0.018016; % kg/mol, H2O
+    Cp_air = 1013;%J⋅kg−1⋅K−1 Evett in Warrick 2002
     Psat_air = 100*exp(-6096.9385/air_temp_K+16.635794-2.711193e-2*air_temp_K+1.673952e-5*air_temp_K^2+2.433502*log(air_temp_K)); %Pa, Sonntag 1994 see http://cires1.colorado.edu/~voemel/vp.html
     Pv = Psat_air*RH; %Pa, Part Press vapor in air
     if isempty(pressure_air_Pa)

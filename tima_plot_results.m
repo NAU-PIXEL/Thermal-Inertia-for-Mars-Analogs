@@ -29,6 +29,12 @@ olive = [110/255,117/255,14/255];
 
 
 %% Plot Comparison
+formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+        FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
+        TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
+        TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
+        TData.pressure_air_Pa,'albedo',TData.timed_albedo,'material',MData.material);
+
 formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
@@ -61,13 +67,13 @@ M = plot(TData.TIMESTAMP,Result_Temp(:,1),'r', 'LineWidth', 2 ,'DisplayName','Su
 
 hold off
 legend([F(2) M], 'Interpreter','none')
-chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_fluxes)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
+chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars))
 Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density,0);
-TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
+TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std)
 TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
 TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 ttl = sprintf('TI Top [Jm^{-2}K^{-1}s^{-12}] = %0.2f, chi_v = %0.2f',TI,chi_v);%Calculate TI from results
-title(ttl,'Interpreter','tex','FontName','Ariel')
+title(ttl)
 
 % residuals = Temps_to_fit-Test_Result;
 % figure(5)

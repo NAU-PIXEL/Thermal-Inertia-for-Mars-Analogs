@@ -58,10 +58,10 @@ function [q_latent,soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_
         beta = 1; %No resistence when saturated
     end
     if q_sat_surf<=q_air
-       soil_RH = RH; % Theoretical "relative humidity" within soil, Pct by vol, Lee & Pielke 1992 + Tran, 2016
+       soil_RH = RH; 
        Evap=0;
     else
-       soil_RH = beta; % Theoretical "relative humidity" within soil, Pct by vol
+       soil_RH = beta; % Theoretical "relative humidity" within soil, Pct by vol, Lee & Pielke 1992 + Tran, 2016
        Evap = rho_air*beta*windspeed_horiz/CE*(q_sat_surf-q_air); %kg/m^2, Evaporation rate
     end
     q_latent = -L_H2O*Evap; %W/m^2, Latent heat flux
