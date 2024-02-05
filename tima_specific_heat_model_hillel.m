@@ -28,5 +28,5 @@ function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho,VWC)
 %   rooty-soil: 1256;
 %   Abu-Hamdeh -- clay: 1170-2250, sand: 830-1670
 
-Cp = (2e6*rho_dry/1000/2.65+4.2e6*VWC)/rho;
+Cp = (2E6.*rho_dry./1000./2.65+4.2E6.*VWC)./rho;
 end

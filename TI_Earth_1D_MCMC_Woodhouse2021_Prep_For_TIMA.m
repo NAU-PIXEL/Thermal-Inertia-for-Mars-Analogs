@@ -165,7 +165,7 @@ evap_depth_II = ones(size(Temps_to_fit));
 evap_depth = ones(size(Temps_to_fit));
 
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
-Vars_init = [0.1;1;400;3000;0.6;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
+Vars_init = [0.2;1;400;3000;0.6;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
 names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 
@@ -321,7 +321,7 @@ nwalkers = 50; %100
 nstep = 1000; %10000
 mccount = nstep*nwalkers;% This is the total number, -NOT the number per chain.% What is the desired total number of monte carlo proposals.
 burnin = 0.5; %fraction of results to omit
-sigma = 10^-2; % dictates sinsitivity of walkers to change
+sigma = 10^-1.5; % dictates sinsitivity of walkers to change
 rng(49)  % For reproducibility
 minit = zeros(length(Vars_init),nwalkers);
 for i = 1:nwalkers

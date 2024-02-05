@@ -37,25 +37,25 @@ function [Cp] = tima_specific_heat_model_DV1963(rho_dry,rho,Temp_K,material)
 %   Solid Rock Eq from Robertson, E.C. and Hemingway, B.S., 1995. Estimating heat capacity and heat content of rocks (No. 95-622). US Geological Survey.
 %   -23.173+2.127*Temp_K+1.5008e-2*Temp_K^2-7.3699e-5*Temp_K^3+9.6552e-8*Temp_K^4; %Cp of solids - polynomial fit for basalt mineral soils
 if material == "basalt"
-    Cp_solid = 1000*(1.65291-0.9541E-4*Temp_K-0.89296E4*Temp_K^-2-13.5666*Temp_K^-0.5);
+    Cp_solid = 1000.*(1.65291-0.9541E-4.*Temp_K-0.89296E4.*Temp_K.^-2-13.5666.*Temp_K.^-0.5);
 elseif material == "amorphous" %silica glass
     Cp_air = 1013;%J⋅kg−1⋅K−1 Evett in Warrick 2002
-    Cp_solid = 1000*(1.27200E02-1.0777E-02*Temp_K+4.3127E05*Temp_K^-2-1.4638E03*Temp_K^-0.5)*rho_dry/rho_glass+Cp_air*(1-rho_dry/rho_glass);
+    Cp_solid = 1000.*(1.27200E02-1.0777E-02.*Temp_K+4.3127E05.*Temp_K.^-2-1.4638E03.*Temp_K.^-0.5).*rho_dry./rho_glass+Cp_air.*(1-rho_dry./rho_glass);
 elseif material == "granite"
-    Cp_solid = 1000*(2.29354-1.9986E-4*Temp_K+2.0526E4*Temp_K^-2-29.3049*Temp_K^-0.5);
+    Cp_solid = 1000.*(2.29354-1.9986E-4.*Temp_K+2.0526E4.*Temp_K.^-2-29.3049.*Temp_K.^-0.5);
 elseif material == "quartz"
     Cp_air = 1013;%J⋅kg−1⋅K−1 Evett in Warrick 2002
-    Cp_solid = 1000*(5.796E01+9.330E-03*Temp_K+1.835E06*Temp_K^-2)*rho_dry/rho_quartz+Cp_air*(1-rho_dry/rho_quartz);
+    Cp_solid = 1000.*(5.796E01+9.330E-03.*Temp_K+1.835E06.*Temp_K.^-2).*rho_dry./rho_quartz+Cp_air.*(1-rho_dry./rho_quartz);
 elseif material == "clay"
     Cp_solid = 890;
 elseif material == "salt" %Al sulfate
     Cp_air = 1013;%J⋅kg−1⋅K−1 Evett in Warrick 2002
-    Cp_solid = 1000*(7.877E02-9.899E-02*Temp_K-8.615E03*Temp_K^-0.5)*rho_dry/rho_salt+Cp_air*(1-rho_dry/rho_salt);
+    Cp_solid = 1000.*(7.877E02-9.899E-02.*Temp_K-8.615E03.*Temp_K.^-0.5).*rho_dry./rho_salt+Cp_air.*(1-rho_dry./rho_salt);
 elseif material == "ice"
     Cp_solid = 2100;
 else
-    Cp_solid = -23.173+2.127*Temp_K+1.5008e-2*Temp_K^2-7.3699e-5*Temp_K^3+9.6552E-8*Temp_K^4; %Cp of solids - polynomial fit for basalt mineral soils
+    Cp_solid = -23.173+2.127.*Temp_K+1.5008e-2.*Temp_K.^2-7.3699e-5.*Temp_K.^3+9.6552E-8.*Temp_K.^4; %Cp of solids - polynomial fit for basalt mineral soils
 end
-Cp_H2O = 3.58435521e-06*Temp_K^4-0.00475626235*Temp_K^3+2.37137032*Temp_K^2-526.09*Temp_K+47971; %Engineering Toolbox
-Cp = (Cp_H2O*(rho-rho_dry)+Cp_solid*rho_dry)/rho; % combined by weight fraction
+Cp_H2O = 3.58435521E-06.*Temp_K.^4-0.00475626235.*Temp_K.^3+2.37137032.*Temp_K.^2-526.09.*Temp_K+47971; %Engineering Toolbox
+Cp = (Cp_H2O.*(rho-rho_dry)+Cp_solid.*rho_dry)./rho; % combined by weight fraction
 end

@@ -181,7 +181,7 @@ for t = 2:length(air_temp_C)
     
     %*********Specific heat***********
     rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,1); %Dry density + water content
-    Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,1));%tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,1),material);
+    Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,1),material);
     %****************************************
 
     %*********SENSIBLE HEAT***********
