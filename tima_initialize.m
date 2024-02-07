@@ -36,6 +36,7 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
 %    Ari Koeppel -- Copyright 2023
 %   
 % See also 
+%   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity.
 %   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
     % ***************    
     

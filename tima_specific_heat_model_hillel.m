@@ -1,4 +1,4 @@
-function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho,VWC)
+ function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho,VWC)
 % TIMA_HILLEL_SPECIFIC_HEAT_MODEL
 %   function to calculates specific heat as a funtion of volumetric water content
 %
@@ -28,5 +28,5 @@ function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho,VWC)
 %   rooty-soil: 1256;
 %   Abu-Hamdeh -- clay: 1170-2250, sand: 830-1670
 
-Cp = (2E6.*rho_dry./1000./2.65+4.2E6.*VWC)./rho;
+Cp = (837.*rho_dry+4.19E6.*VWC)./rho; % (Hanks, 1992)
 end
