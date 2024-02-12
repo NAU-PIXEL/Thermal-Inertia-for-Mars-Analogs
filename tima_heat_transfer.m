@@ -129,7 +129,7 @@ p.addParameter('shadow_time_ind',[],@isnumeric);
 p.addParameter('material',"basalt",@ischar);
 p.addParameter('MappingMode',false,@islogical);
 p.addParameter('T_adj1',[],@(x)isnumeric(x)&&length(x)==2);
-p.addParameter('T_adj2',[],@(x)isnumeric(x)&&length(x)==2);
+p.addParameter('T_adj2',[]);
 p.parse(r_short_lower, r_short_upper, varargin{:});
 
 p=p.Results;
@@ -169,7 +169,12 @@ k = k_dry_std_upper.*ones(1,NLAY);
 kay_upper = k_dry_std_upper;
 kay_lower = k_dry_std_lower;
 [~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
-    
+FC = NaN(NLAY-1,1);
+FB = FC;
+for z = 2:NLAY-1
+    FC(z) = 2*dt/layer_size(z)^2;
+    FB(z) = layer_size(z+1)/layer_size(z);
+end
 
 for t = 2:length(air_temp_C)
     %*********LATENT HEAT & THERMAL CONDUCTIVITY***********
@@ -181,7 +186,7 @@ for t = 2:length(air_temp_C)
     
     %*********Specific heat***********
     rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,1); %Dry density + water content
-    Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,1));%tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,1),material);
+    Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,1),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
     %****************************************
 
     %*********SENSIBLE HEAT***********
@@ -224,12 +229,12 @@ for t = 2:length(air_temp_C)
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
     if ~isempty(T_adj1)
-        if dug_VWC(t,1) > 0.03 && (t == T_adj1(1))
+        if dug_VWC(t,1) > 0.03 && (t == ceil(T_adj1(1)))
             T(t,1) = T_adj1(2); %Value taken from T109 probe in watering can
         end
     end
     if ~isempty(T_adj2)
-        if dug_VWC(t,1) > 0.02 && (t == T_adj2(1))
+        if dug_VWC(t,1) > 0.02 && (t == ceil(T_adj2(1)))
             T(t,1) = T_adj2(2); %Value taken from T109 probe in watering can
         end
     end
@@ -245,7 +250,7 @@ for t = 2:length(air_temp_C)
             end
             k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH, material);
             rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,z); %H2O dep
-            Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,z));%tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);
+            Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
                         %Subsurface Multip Factors (Kieffer, 2013)
         else
             if material == "ice"
@@ -264,23 +269,26 @@ for t = 2:length(air_temp_C)
                 end
                 k(z) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH,material);
                 rho = rho_dry_lower + rho_H2O*dug_VWC(t-1,z); %H2O dep
-                Cp = tima_specific_heat_model_hillel(rho_dry_upper,rho,dug_VWC(t-1,z));%tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);
+                Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
             end
         end
         %Subsurface Multip Factors (Kieffer, 2013)
-        F1 = 2*dt*k(z)/((Cp*rho*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
-        F3 = (1+(layer_size(z+1)/layer_size(z))*(k(z)/k(z+1)))/(1+(layer_size(z-1)/layer_size(z))*(k(z)/k(z-1)));
+        if (k(z)/rho/Cp) <= (2*dt/layer_size(z)^2)
+            error("non convergance")
+        end
+        F1 = FC(z)*k(z)/((Cp*rho)*(1+FB(z)*k(z)/k(z+1)));
+        F3 = (1+FB(z)*(k(z)/k(z+1)))/(1+(1/FB(z-1))*(k(z)/k(z-1)));
         F2 = -(1 + F3);
         %Temperature response
         dT = F1*(T(t-1,z+1)+F2*T(t-1,z)+F3*T(t-1,z-1))+dt/(Cp*rho*layer_size(z))*q_evap_z;
         T(t,z) = T(t-1,z)+dT;
         if ~isempty(T_adj1)
-            if dug_VWC(t,z) > 0.03 && (t == T_adj1(1))
+            if dug_VWC(t,z) > 0.02 && (t == ceil(T_adj1(1)))
                 T(t,z) = T_adj1(2); %Value taken from T109 probe in watering can
             end
         end
         if ~isempty(T_adj2)
-            if dug_VWC(t,z) > 0.02 && (t == T_adj2(1))
+            if dug_VWC(t,z) > 0.02 && (t == ceil(T_adj2(1)))
                 T(t,z) = T_adj2(2); %Value taken from T109 probe in watering can
             end
         end

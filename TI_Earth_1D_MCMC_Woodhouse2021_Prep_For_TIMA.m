@@ -22,7 +22,7 @@ format compact; format longG;
 %Find and load a .mat file with data already synchronized and
 %clipped to the proper time window. See script: PSTAR_Data_Integration_SunsetMay2021_Moving.m
 % Retrieve data file path name
-LogFile = dir('X:\common\FIELD_CAMPAIGNS\WoodhouseMesa_May2021\Ground_Station\Synced_Data\WoodhouseMesa_May2021_Irradiance.mat');
+LogFile = dir('C:\Users\akoeppel\Desktop\TIMA_Outputs\WoodhouseMesa_May2021_Irradiance.mat'); %dir('X:\common\FIELD_CAMPAIGNS\WoodhouseMesa_May2021\Ground_Station\Synced_Data\SunsetMay2021_OneMinute_wSolar_TruePressure_VWCfixed_TrueFLIR_Clipped_wIrrad.mat');
 % ***************
 
 % ***************
@@ -30,26 +30,23 @@ LogFile = dir('X:\common\FIELD_CAMPAIGNS\WoodhouseMesa_May2021\Ground_Station\Sy
 Data_orig = struct2cell(load(fullfile(LogFile.folder, LogFile.name)));
 Data_orig = Data_orig{:,:};
 Orig_Temps_to_Fit = Data_orig.FLIR_DrySurf_Corr;
-Orig_err = (0.002.*(273.15+Orig_Temps_to_Fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
-observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
-mask = isnan(Orig_Temps_to_Fit);
-starts = [mask(1); (diff(mask)>0)];
-stops = [(diff(mask)<0);~mask(end)];
-t_step = 0.25; %minutes
-if t_step >= 1
-    Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step));
+t_step = 1; %minutes
+if t_step == 1
+    Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
+    fit_ind = (isnan(Data.FLIR_DrySurf_Corr));
+    fit_ind = find(fit_ind==0);
+elseif t_step > 1
+    Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
+    fit_ind = (isnan(Data.FLIR_DrySurf_Corr));
+    fit_ind = find(fit_ind==0);
 else
     Data = retime(Data_orig,'regular','pchip','TimeStep',minutes(t_step));
-end
-Data.mask = zeros(height(Data),1);
-Data.mask(Data_orig.TIMESTAMP(starts & ~stops)) = 1; % leave singleton blocks alone
-Data.mask(Data_orig.TIMESTAMP(stops & ~starts)) = -1;% leave singleton blocks alone
-Data.mask = cumsum(Data.mask);
-Data.mask(Data_orig.TIMESTAMP(stops)) = 1; % mark singleton blocks as missing
-% ind = find(Data.mask==0);
-observed_TT(mask,:) = [];
-for times = 1:size(observed_TT,1)
-    [~,fit_ind(times)] = min(abs(datenum(Data.TIMESTAMP)-datenum(observed_TT.Time(times))));
+    observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
+    mask = isnan(Orig_Temps_to_Fit);
+    observed_TT(mask,:) = [];
+    for times = 1:size(observed_TT,1)
+        [~,fit_ind(times)] = min(abs(datenum(Data.TIMESTAMP)-datenum(observed_TT.Time(times))));
+    end
 end
 % ***************
 
@@ -83,9 +80,9 @@ T_adj2=[2521,301.95];
 Corrected_Dry_Point_Temp = Data.FLIR_DrySurf_Corr;
 Corrected_Wet_Point_Temp = Data.FLIR_WetSurf_Corr;
 % ***************
-TT = timetable(Data.TIMESTAMP,Corrected_Dry_Point_Temp);
-Interpolated_Temp = fillmissing(TT,'linear');
-Interpolated_Temp=Interpolated_Temp{:,1};
+TT = timetable(Data.TIMESTAMP,Corrected_Dry_Point_Temp,Data.FLIR_VIS_albedo_dry,Data.FLIR_VIS_albedo_wet);
+Interpolated_TT = fillmissing(TT,'linear');
+Interpolated_Temp=Interpolated_TT{:,1};
 
 % ***************
 % Observational Data:
@@ -118,7 +115,7 @@ Dug_VWC_Wet(:,4) = Data.VWC_301;
 Dug_VWC_Wet(:,5) = Data.VWC_401;
 Dug_VWC_Wet(:,6) = Data.VWC_501;
 Temps_to_fit_II=Data.FLIR_WetSurf_Corr; %Define Wet fitting data here
-Timed_Albedo_II = Data.FLIR_VIS_albedo_wet;
+Timed_Albedo_II = Interpolated_TT{:,3};
 % Soil_Temp_II = Soil_Temp_C_Wet;
 %Dug_VWC_II = Dug_VWC_Wet;
 Dug_VWC_Wet(:,2:end) = smoothdata(Dug_VWC_Wet(:,2:end),'gaussian',VWC_Smooth_Window);
@@ -131,7 +128,7 @@ Dug_VWC_Dry(:,4) = Data.VWC_306;
 Dug_VWC_Dry(:,5) = Data.VWC_406;
 Dug_VWC_Dry(:,6) = Data.VWC_506;
 Temps_to_fit=Data.FLIR_DrySurf_Corr; %Define Wet fitting data here
-Timed_Albedo = Data.FLIR_VIS_albedo_dry;
+Timed_Albedo = Interpolated_TT{:,2};
 Soil_Temp = Soil_Temp_C_Dry;
 % Dug_VWC = Dug_VWC_Dry;
 Dug_VWC_Dry(:,3:end) = smoothdata(Dug_VWC_Dry(:,3:end),'gaussian',VWC_Smooth_Window);
@@ -165,12 +162,12 @@ evap_depth_II = ones(size(Temps_to_fit));
 evap_depth = ones(size(Temps_to_fit));
 
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
-Vars_init = [0.2;1;400;3000;0.6;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
+Vars_init = [0.15;0.9;1000;7000;0.3;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
 names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 
 %% Routine to set up boundary and initial conditions for model
-fspace = 0.005+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
+fspace = 0.0075;%0.0005+0.0001*dt+0:0.001:0.1;
 check = 0.*fspace;
 % ***************
 %Define Lower Boundary conditions
@@ -255,7 +252,7 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     if isreal(Test_Result) && abs(max(Test_Result)-max(Temps_to_fit)) < 50 && sum(sum(max(Subsurface_Temperatures) > (273.15+max(Temps_to_fit(1:(1440/(dt/60))))))) == 0 && sum(isnan(Test_Result)) == 0 %indicators of stability
         check(i+1) = 1;
     end
-    if check(i) == 1 && (check(i) == check (i+1)) %make sure its consecutively stable
+    if check(i) == 1 %&& (check(i) == check (i+1)) %make sure its consecutively stable
         break
     end
 end
@@ -268,7 +265,7 @@ for i = 2:size(Subsurface_Temperatures_Running,2)
     M(i) = plot(Subsurface_Temperatures_Running((end-1440/(dt/60)+1):end,i),'b--', 'LineWidth', 2,'DisplayName','Subsurface_Modeled');
 hold on
 end
-SS= plot(Soil_Temp_C_Dry(1:1440/(dt/60)),'k','LineWidth', 1 ,'DisplayName','Depth Temp Observed'); %1st day only (1440s)
+SS= plot(Data.SoilTemp1(1:1440/(dt/60)),'k','LineWidth', 1 ,'DisplayName','Depth Temp Observed'); %1st day only (1440s)
 hold off
 legend([M(1:2) SS],'Interpreter','none')
 xlabel('Minutes after start time')
@@ -277,7 +274,7 @@ ttl = sprintf('Day 1 Repeated, %0.f layers, RLAY = %0.2f, FLAY = %0.2f',length(L
 title(ttl)
 T_Test(:) = T_Start-273.15;%SUB_TEMPS((end-Time_from_end)/(dt/60),:);
 figure
-plot([0 cumsum(Layer_size_B)], [T_Test T_Test(end)]);
+plot(cumsum(Layer_size_B), T_Test);
 xlabel('Depth (m)')
 ylabel('Temperature (C)')
 
@@ -292,7 +289,7 @@ if sum(isnan(Test_Result))>1 || ~isreal(Test_Result)
 end
 figure
 hold on
-M(1) = fill([Data.TIMESTAMP(fit_ind); flipud(Data.TIMESTAMP(fit_ind))],[Orig_Temps_to_Fit(~mask)-Orig_err(~mask);flipud(Orig_Temps_to_Fit(~mask)+Orig_err(~mask))], [128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
+M(1) = fill([Data.TIMESTAMP(fit_ind); flipud(Data.TIMESTAMP(fit_ind))],[Temps_to_fit(fit_ind)-err(fit_ind);flipud(Temps_to_fit(fit_ind)+err(fit_ind))], [128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
 set(M(1), 'edgecolor', 'none');
 set(M(1), 'FaceAlpha', 0.5);
 G = plot(Data.TIMESTAMP,Soil_Temp,'b','DisplayName','Measured');
@@ -321,7 +318,7 @@ nwalkers = 50; %100
 nstep = 1000; %10000
 mccount = nstep*nwalkers;% This is the total number, -NOT the number per chain.% What is the desired total number of monte carlo proposals.
 burnin = 0.5; %fraction of results to omit
-sigma = 10^-1.5; % dictates sinsitivity of walkers to change
+sigma = 10^-3; % dictates sinsitivity of walkers to change
 rng(49)  % For reproducibility
 minit = zeros(length(Vars_init),nwalkers);
 for i = 1:nwalkers

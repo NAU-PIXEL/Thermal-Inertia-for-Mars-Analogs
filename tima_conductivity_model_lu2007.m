@@ -56,21 +56,17 @@ k_air = 0.024+7.73E-5.*(Soil_Temperature-273.15)-2.6E-8.*(Soil_Temperature-273.1
 k_air_avg = 0.024+7.73E-5.*(T_std-273.15)-2.6E-8.*(T_std-273.15)^2; %Thermal conductivity of air at zero moisture and standard temperature
 k_dry_mod = 2*k_air.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 - independent of composition and grain size
 k_dry_mod_avg = 2*k_air_avg.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 R > 0.98 within range 0.01-0.035 - independent of composition and grain size
-if k_dry_mod<k_air
-    k_dry_mod = k_air;
-end
-if k_dry_mod_avg<k_air_avg
-    k_dry_mod_avg = k_air_avg;
-end
-k_dry = k_dry_std*k_dry_mod/k_dry_mod_avg; % Since Piquex 2009a Fig 8 was modeled for a specific material type, k_dry_mod does not encessarily apply here, but the ratio of k_dry_mod/k_dry_mod_avg should be similar.
+k_dry_mod(k_dry_mod<k_air) = k_air(k_dry_mod<k_air);
+k_dry_mod_avg(k_dry_mod_avg<k_air_avg) = k_air_avg(k_dry_mod_avg<k_air_avg);
+k_dry = k_dry_std.*k_dry_mod./k_dry_mod_avg; % Since Piquex 2009a Fig 8 was modeled for a specific material type, k_dry_mod does not encessarily apply here, but the ratio of k_dry_mod/k_dry_mod_avg should be similar.
 
 k_H2O = -1.1e-5.*(Soil_Temperature - 273.15).^2 + 0.00234.*(Soil_Temperature - 273.15) + 0.552; %Bristow 2002 or 0.59 from Zhang and Wang 2017 or 0.6096 from Haigh 2012
 % k-bulk-dry from theory
 if material == "basalt"
-    k_solid = 1.18 + 474/(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
+    k_solid = 1.18 + 474./(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
 % Roughly = 2.2, Bristow, 2002
 elseif material == "amorphous"
-    k_solid = 0.6924 + 0.0015*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
+    k_solid = 0.6924 + 0.0015.*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
 elseif material == "granite"
     k_solid = 2.0;
     % Roughly = 2.0 (granite), Bristow, 2002
@@ -80,7 +76,7 @@ elseif material == "clay"
     k_solid = 2.9;
     % Roughly = 2.9 (clay), Bristow, 2002
 elseif material == "salt"
-    k_solid = -2.11 + 2960/(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
+    k_solid = -2.11 + 2960./(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
 elseif material == "ice"
     k_solid = 2.18;
     % Roughly = 2.18, Bristow, 2002
@@ -88,12 +84,12 @@ else
     k_solid = 2.2;
 end
 
-Sr = VWC/theta_k; %degree of field capacity
-k_wet = k_solid^(1-theta_k)*(k_H2O^theta_k);%geometric mean to calculate thermal conductivity at field capacity
+Sr = VWC./theta_k; %degree of field capacity
+k_wet = k_solid.^(1-theta_k).*(k_H2O.^theta_k);%geometric mean to calculate thermal conductivity at field capacity
 
-if Sr>1, Sr = 1; end
+Sr(Sr>1)=1;
 
 %**********K Model************
-k_eff = k_dry + exp(m*(1-(Sr)^(m-1.33)))*(k_wet-k_dry); %Lu 2007
+k_eff = k_dry + exp(m.*(1-(Sr).^(m-1.33))).*(k_wet-k_dry); %Lu 2007
 
 end

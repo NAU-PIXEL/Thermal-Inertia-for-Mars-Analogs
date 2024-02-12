@@ -57,5 +57,5 @@ else
     Cp_solid = -23.173+2.127.*Temp_K+1.5008e-2.*Temp_K.^2-7.3699e-5.*Temp_K.^3+9.6552E-8.*Temp_K.^4; %Cp of solids - polynomial fit for basalt mineral soils
 end
 Cp_H2O = 3.58435521E-06.*Temp_K.^4-0.00475626235.*Temp_K.^3+2.37137032.*Temp_K.^2-526.09.*Temp_K+47971; %Engineering Toolbox
-Cp = (Cp_H2O.*(rho-rho_dry)+Cp_solid.*rho_dry)./rho; % combined by weight fraction
+Cp = (Cp_ H2O.*(rho-rho_dry)+Cp_solid.*rho_dry)./rho; % combined by weight fraction
 end
