@@ -1,4 +1,4 @@
-function [q_sensible] = tima_sensible_heat_model(CH,windspeed_horiz,air_temp_K,T_surf_K)
+function [q_sensible,SHCoeff] = tima_sensible_heat_model(CH,windspeed_horiz,air_temp_K,T_surf_K)
 %***************
 % TIMA_SENSIBLE_HEAT_MODEL
 %   function to calculate sensible heat flux at the surface due to forced convection at a given timestep using a tunable aerodynamic method
@@ -28,6 +28,6 @@ function [q_sensible] = tima_sensible_heat_model(CH,windspeed_horiz,air_temp_K,T
     end
     rho_air = 1.291-0.00418*(air_temp_K-273.15); %kg/m^3, Evett in Warrick 2002
     Cp_air = 1013;%J/(kg⋅K), Evett in Warrick 2002
-
-    q_sensible = -rho_air*Cp_air*windspeed_horiz/CH*(T_surf_K-air_temp_K); %W/m^2
+    SHCoeff=-rho_air*Cp_air*windspeed_horiz/CH;
+    q_sensible = SHCoeff*(T_surf_K-air_temp_K); %W/m^2
 end

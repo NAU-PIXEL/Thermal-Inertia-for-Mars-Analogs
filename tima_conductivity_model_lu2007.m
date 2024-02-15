@@ -70,7 +70,7 @@ elseif material == "amorphous"
 elseif material == "granite"
     k_solid = 2.0;
     % Roughly = 2.0 (granite), Bristow, 2002
-elseif material == "quartz"
+elseif material == "sandstone"
     k_solid = 7.69; %(horai 1971)
 elseif material == "clay"
     k_solid = 2.9;

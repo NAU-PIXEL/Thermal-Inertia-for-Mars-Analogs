@@ -30,7 +30,7 @@ LogFile = dir('C:\Users\akoeppel\Desktop\TIMA_Outputs\WoodhouseMesa_May2021_Irra
 Data_orig = struct2cell(load(fullfile(LogFile.folder, LogFile.name)));
 Data_orig = Data_orig{:,:};
 Orig_Temps_to_Fit = Data_orig.FLIR_DrySurf_Corr;
-t_step = 1; %minutes
+t_step = 0.5; %minutes
 if t_step == 1
     Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
     fit_ind = (isnan(Data.FLIR_DrySurf_Corr));
@@ -162,19 +162,19 @@ evap_depth_II = ones(size(Temps_to_fit));
 evap_depth = ones(size(Temps_to_fit));
 
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
-Vars_init = [0.15;0.9;1000;7000;0.3;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
+Vars_init = [0.115;0.6;1000;5000;0.3;0.04];%[0.148;0.79;681;6700;0.29;0.044];%
 names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 
 %% Routine to set up boundary and initial conditions for model
-fspace = 0.0075;%0.0005+0.0001*dt+0:0.001:0.1;
+fspace = 0.001+(0.0001:0.0001:0.019);
 check = 0.*fspace;
 % ***************
 %Define Lower Boundary conditions
 T_Deep = mean([max(Soil_Temp_C_Dry),min(Soil_Temp_C_Dry)])+273.15; %Static mean of near surf temp
 
 density_plus = density + 997*mean(Dug_VWC_Dry(:,end),'omitnan'); %Dry density + water content
-Cp_Deep = tima_specific_heat_model_hillel(density,density_plus,mean(Dug_VWC_Dry(:,end),'omitnan'));
+Cp_Deep = tima_specific_heat_model_hillel(density,density_plus);
 % ***************
 RLAY = 1.3; %1.15 Thickness geometric multiplier of layers beneath Christian used 1.3
 % ***************
@@ -192,10 +192,15 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     if Layer_size_B(1) > 0.10
         error('Layer 1 reached too big at over 10 cm')
     end
-    while sum(Layer_size_B) < Depth_Max
+    while sum(Layer_size_B) < (Depth_Max+Layer_size_B(1))
       Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters) depth_grid = FLAY*RLAY.^(0:n-1);
+      if Layer_size_B(end)^2<=2*dt*Vars_init(1)/(density*Cp_Deep)
+          check(i)=2;
+          break
+      end
     end
-    depth_grid = cumsum(Layer_size_B);
+    if check(i)==2;continue;end
+    depth_grid = cumsum(Layer_size_B(2:end))-Layer_size_B(2:end)/2;
     [X,Y] = meshgrid(VWC_dug_depth,1:length(Air_Temp_C));
     [Xq,Yq] = meshgrid(depth_grid,1:length(Air_Temp_C));
     %plot3(X,Y,Dug_VWC_Dry)
@@ -227,7 +232,7 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     % ***************
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures
-    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC_interp,Humidity,NDAYS,material);
+    Subsurface_Temperatures = tima_initialize_skin(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC_interp,Humidity,NDAYS,material);
     Subsurface_Temperatures_Running(:,:) = Subsurface_Temperatures(1,:,:)-273.15; %Set up array using first day
     for D = 2:size(Subsurface_Temperatures,1) % for plotting
         TEMP(:,:) = Subsurface_Temperatures(D,:,:)-273.15;
@@ -236,13 +241,13 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     T_Start(:)=Subsurface_Temperatures(end,end,:);
     T_Start(1) = StartTemp_1;
 
-    formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod = @(FitVar) tima_heat_transfer_skin(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
         Dug_VWC_interp,evap_depth,Humidity,emissivity,...
         Pressure_air_Pa,'albedo',Timed_Albedo);
 
-    formod_II = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod_II = @(FitVar) tima_heat_transfer_skin(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
         Dug_VWC_II_interp,evap_depth_II,Humidity,emissivity,...
@@ -272,9 +277,9 @@ xlabel('Minutes after start time')
 ylabel('Temperature (K)')
 ttl = sprintf('Day 1 Repeated, %0.f layers, RLAY = %0.2f, FLAY = %0.2f',length(Layer_size_B),RLAY,FLAY);
 title(ttl)
-T_Test(:) = T_Start-273.15;%SUB_TEMPS((end-Time_from_end)/(dt/60),:);
+T_Test = T_Start-273.15;%SUB_TEMPS((end-Time_from_end)/(dt/60),:);
 figure
-plot(cumsum(Layer_size_B), T_Test);
+plot([0 depth_grid], T_Test);
 xlabel('Depth (m)')
 ylabel('Temperature (C)')
 
@@ -318,7 +323,7 @@ nwalkers = 50; %100
 nstep = 1000; %10000
 mccount = nstep*nwalkers;% This is the total number, -NOT the number per chain.% What is the desired total number of monte carlo proposals.
 burnin = 0.5; %fraction of results to omit
-sigma = 10^-3; % dictates sinsitivity of walkers to change
+sigma = 10^-2; % dictates sinsitivity of walkers to change
 rng(49)  % For reproducibility
 minit = zeros(length(Vars_init),nwalkers);
 for i = 1:nwalkers

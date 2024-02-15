@@ -1,4 +1,4 @@
-function [q_latent,soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC)
+function [q_latent,soil_RH,LHCoeff] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC)
 % TIMA_LATENT_HEAT_MODEL_LP1992
 %   function to calculate latent heat flux due to evaporation in a given layer at a given timestep using a tunable aerodynamic method
 %
@@ -41,7 +41,7 @@ function [q_latent,soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_
     R = 8.31446; %J/(K·mol), gas constant
     Md = 0.0289652; % kg/mol, Dry air
     Mv = 0.018016; % kg/mol, H2O
-    Psat_air = 100*exp(-6096.9385/air_temp_K+16.635794-2.711193e-2*air_temp_K+1.673952e-5*air_temp_K^2+2.433502*log(air_temp_K)); %Pa, Sonntag 1994 see http://cires1.colorado.edu/~voemel/vp.html
+    Psat_air = tima_psaturationpa_Sonntag1994(air_temp_K); %Pa
     Pv = Psat_air*RH; %Pa, Part Press vapor in air
     if isempty(pressure_air_Pa)
         rho_air = 1.291-0.00418*(air_temp_K-273.15); %kg/m^3, Evett in Warrick 2002
@@ -49,7 +49,7 @@ function [q_latent,soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_
         Pd = pressure_air_Pa - Pv; %Pa, Part Press dry air
         rho_air = (Pd*Md+Pv*Mv)/(R*air_temp_K); %kg/m^3, accounting for humid air
     end
-    Psat_surf = 100*exp(-6096.9385/T_ground_K+16.635794-2.711193e-2*T_ground_K+1.673952e-5*T_ground_K^2+2.433502*log(T_ground_K)); %Pa, Sonntag 1994 see http://cires1.colorado.edu/~voemel/vp.html
+    Psat_surf = tima_psaturationpa_Sonntag1994(T_ground_K); %Pa
     q_air = Mv/Md*Pv/(pressure_air_Pa-(1-Mv/Md)*Pv); %kgh2o/kg dry_air, Specific Humidity Air
     q_sat_surf = Mv/Md*Psat_surf/(pressure_air_Pa-(1-Mv/Md)*Psat_surf); %kgh2o/kg dry_air, Specific Humidity Surf (saturation value at surf temp)
     if soil_VWC <= theta_E % theta_E is max amount a soil will hold if exposed to a constant mist, Mahfouf & Noilhan, 1991, Tran 2016 calls VWC_Sat the evaporation-rate reduction point
@@ -65,5 +65,5 @@ function [q_latent,soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_
        Evap = rho_air*beta*windspeed_horiz/CE*(q_sat_surf-q_air); %kg/m^2, Evaporation rate
     end
     q_latent = -L_H2O*Evap; %W/m^2, Latent heat flux
-
+    LHCoeff = -q_latent/(q_sat_surf-q_air);
 end
