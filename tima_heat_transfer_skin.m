@@ -234,10 +234,10 @@ for t = 1:length(air_temp_C)
         dWdt = 4*emissivity*sigma*T_surf(t)^3+2*k(1)/layer_size(2)+SHCoeff;%+LECoeff*(tima_psaturationpa_Sonntag1994(T_surf(t))-tima_psaturationpa_Sonntag1994(T_surf(t-1)))/dt;
         %leaving off LE because small and mostly not relevent for surface skin unless frost
         delta = W/dWdt;
-        q_rad = q_rad + 4*emissivity*sigma*T_surf(t)^3*delta; %For printing out
-        q_conv = q_conv + SHCoeff*delta; %for printing out
+        % q_rad = q_rad + 4*emissivity*sigma*T_surf(t)^3*delta; %For printing out
+        % q_conv = q_conv + SHCoeff*delta; %for printing out
         % q_evap_1 = q_evap_1 + LHCoeff*(tima_psaturationpa_Sonntag1994(T_surf(t))-tima_psaturationpa_Sonntag1994(T_surf(t-1)))/dt*delta;
-        q_G_surf = q_G_surf + 2*k(1)/layer_size(2)*delta; %for printing out
+        % q_G_surf = q_G_surf + 2*k(1)/layer_size(2)*delta; %for printing out
         %*******************************
         T_surf(t) = T_surf(t)+delta; %new T at surface
         if ~isempty(T_adj1)

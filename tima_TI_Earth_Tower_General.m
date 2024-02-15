@@ -101,9 +101,9 @@ end
 
 %% Inputs to emcee
 if TwoSpot == true
-    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.41,'theta_k_max',0.9) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
+    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.01,'theta_k_max',0.9) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
 else
-    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.41,'theta_k_max',0.9) @(theta)-0.5*sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)};% a cell of function handles returning the log probality of a each outcome
+    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.01,'theta_k_max',0.9) @(theta)-0.5*sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)};% a cell of function handles returning the log probality of a each outcome
 end
 %% Run emcee
 % ***************
