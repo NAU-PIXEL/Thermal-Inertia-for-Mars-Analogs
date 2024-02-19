@@ -179,6 +179,7 @@ for t = 2:length(air_temp_C)
     %*********LATENT HEAT & THERMAL CONDUCTIVITY***********
     [q_evap_1,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,1),dug_VWC(t-1,1));
     k(1) = tima_conductivity_model_lu2007(kay_upper,T(t-1,1),T_std,dug_VWC(t-1,1),theta_k,m,Soil_RH,material);%Top
+    k(2) = tima_conductivity_model_lu2007(kay_upper,T(t-1,2),T_std,dug_VWC(t-1,2),theta_k,m,Soil_RH,material);
     [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,NLAY),dug_VWC(t-1,end));
     k(NLAY) = tima_conductivity_model_lu2007(kay_lower,T(t-1,NLAY),T_std,dug_VWC(t-1,end),theta_k,m,Soil_RH,material);%Top;%Bottom
     %****************************************
@@ -219,11 +220,11 @@ for t = 2:length(air_temp_C)
     
     %*********Ground Flux***********
     %ref: Kieffer, 2013
-    q_G = -k(1)*(T(t-1,1)-T(t-1,2))/layer_size(1); %heat flux from conducting with lower layer
+    q_G = -2*(T(t-1,1)-T(t-1,2))/(layer_size(1)/k(1)+layer_size(2)/k(2)); %heat flux from conducting with lower layer
     %*******************************
 
     %*********Combine Heat transfer elements***********
-    W = q_G+q_conv+q_rad+q_evap_1; %Heat Flux, W/m^2
+    W = q_rad+q_G+q_conv+q_evap_1; %Heat Flux, W/m^2
     dT = dt/(Cp*rho*layer_size(1))*(W); %Temperature change for given thickness of material with known volumetric Cp
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
