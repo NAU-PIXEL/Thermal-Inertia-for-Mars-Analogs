@@ -30,12 +30,12 @@ LogFile = dir('C:\Users\akoeppel\Desktop\TIMA_Outputs\WoodhouseSept2022_AllData_
 Data_orig = struct2cell(load(fullfile(LogFile.folder, LogFile.name)));
 Data_orig = Data_orig{:,:};
 Orig_Temps_to_Fit = Data_orig.Center_Sand_Temp_Corr; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
-Orig_err = (0.002.*(273.15+Orig_Temps_to_Fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
+Orig_err = 0.05.*(Orig_Temps_to_Fit);%(0.002.*(273.15+Orig_Temps_to_Fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
 observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
 mask = isnan(Orig_Temps_to_Fit);
 starts = [mask(1); (diff(mask)>0)];
 stops = [(diff(mask)<0);~mask(end)];
-t_step = 0.5; %minutes
+t_step = 1; %minutes
 if t_step == 1
     Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
     fit_ind = (isnan(Data.Center_Sand_Temp_Corr));
@@ -132,12 +132,12 @@ Dug_Temp_Wet(:,6) = Data.Temp_401;
 Dug_Temp_Wet(:,7) = Data.Temp_501;
 
 Dug_VWC_Ctl(:,1) = Data.VWC2; %In Situ near surf Soil Moisture from nearest DRY probe
-Dug_VWC_Ctl(:,2) = Data.VWC_52;
-Dug_VWC_Ctl(:,3) = Data.VWC_102;
-Dug_VWC_Ctl(:,4) = Data.VWC_202;
-Dug_VWC_Ctl(:,5) = Data.VWC_302;
-Dug_VWC_Ctl(:,6) = Data.VWC_402;
-Dug_VWC_Ctl(:,7) = Data.VWC_502;
+Dug_VWC_Ctl(:,2) = Data.VWC_55;%52;
+Dug_VWC_Ctl(:,3) = Data.VWC_103;%102;
+Dug_VWC_Ctl(:,4) = Data.VWC_204;%202;
+Dug_VWC_Ctl(:,5) = Data.VWC_303;%302;
+Dug_VWC_Ctl(:,6) = Data.VWC_403;%402;
+Dug_VWC_Ctl(:,7) = Data.VWC_503;%502;
 Dug_VWC_Ctl_smooth = smoothdata(Dug_VWC_Ctl,'gaussian',VWC_Smooth_Window);
 SoilVWC_Ctl_smooth = smoothdata(Data.VWC2,'gaussian',Smooth_Window); %VWC is discretized, so this smoothes it
 Dug_VWC_Ctl_smooth(:,1) = SoilVWC_Ctl_smooth;
@@ -149,15 +149,15 @@ Dug_Temp_Ctl(:,5) = Data.Temp_302;
 Dug_Temp_Ctl(:,6) = Data.Temp_402;
 Dug_Temp_Ctl(:,7) = Data.Temp_502;
 
-Dug_VWC_Dry(:,1) = Data.VWC2;%Data.VWC3; %In Situ near surf Soil Moisture from nearest DRY probe
+Dug_VWC_Dry(:,1) = Data.VWC3;%Data.VWC3; %In Situ near surf Soil Moisture from nearest DRY probe
 Dug_VWC_Dry(:,2) = Data.VWC_53;
 Dug_VWC_Dry(:,3) = Data.VWC_103;
 Dug_VWC_Dry(:,4) = Data.VWC_203;
-Dug_VWC_Dry(:,5) = Data.VWC_306;%303
-Dug_VWC_Dry(:,6) = Data.VWC_406;%303
-Dug_VWC_Dry(:,7) = Data.VWC_506;%303
+Dug_VWC_Dry(:,5) = Data.VWC_303;
+Dug_VWC_Dry(:,6) = Data.VWC_403;
+Dug_VWC_Dry(:,7) = Data.VWC_503;
 Dug_VWC_Dry_smooth = smoothdata(Dug_VWC_Dry,'gaussian',VWC_Smooth_Window);
-SoilVWC_Dry_smooth = smoothdata(Data.VWC2,'gaussian',Smooth_Window); %VWC is discretized, so this smoothes it
+SoilVWC_Dry_smooth = smoothdata(Data.VWC3,'gaussian',Smooth_Window); %VWC is discretized, so this smoothes it
 Dug_VWC_Dry_smooth(:,1) = SoilVWC_Dry_smooth;
 Dug_Temp_Dry(:,1) = Data.SoilTemp3; %In Situ near surf Soil Temp from nearest DRY probe
 Dug_Temp_Dry(:,2) = Data.Temp_53;
@@ -230,8 +230,8 @@ Dug_Temp_II = Dug_Temp_Wet;
 Temps_to_fit=Corrected_Dry_Point_Temp; %Define Wet fitting data here
 Timed_Albedo = Albedo;
 Soil_Temp = Soil_Temp_C_Dry;
-Dug_VWC = Dug_VWC_Dry_smooth;
-Dug_VWC(:,1) = SoilVWC_Ctl_smooth;
+Dug_VWC = Dug_VWC_Ctl_smooth;
+%Dug_VWC(:,1) = SoilVWC_Ctl_smooth;
 % Dug_VWC = Dug_VWC_Dry;
 % Dug_VWC(:,1) = Dug_VWC_Ctl(:,1);
 Dug_Temp = Dug_Temp_Dry;
@@ -256,7 +256,7 @@ evap_depth_II = ones(size(Air_Temp_C));
 evap_depth = ones(size(Air_Temp_C));
 
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
-Vars_init = [0.145;0.9;1000;500;0.6;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
+Vars_init = [0.14;0.9;400;500;0.6;0.1];%[0.148;0.79;681;6700;0.29;0.044];%
 names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 
@@ -298,8 +298,8 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     [X,Y] = meshgrid(VWC_dug_depth,1:length(Air_Temp_C));
     [Xq,Yq] = meshgrid(depth_grid,1:length(Air_Temp_C));
     %plot3(X,Y,Dug_VWC_Dry)
-    Dug_VWC_interp = interp2(X,Y,Dug_VWC_Dry,Xq,Yq,'makima');Dug_VWC_interp(Dug_VWC_interp<0)=0;
-    Dug_VWC_II_interp = interp2(X,Y,Dug_VWC_Wet,Xq,Yq,'makima');Dug_VWC_II_interp(Dug_VWC_II_interp<0)=0;
+    Dug_VWC_interp = interp2(X,Y,Dug_VWC_Ctl_smooth,Xq,Yq,'makima');Dug_VWC_interp(Dug_VWC_interp<0)=0;
+    Dug_VWC_II_interp = interp2(X,Y,Dug_VWC_Wet_smooth,Xq,Yq,'makima');Dug_VWC_II_interp(Dug_VWC_II_interp<0)=0;
     %plot3(Xq,Yq,Dug_VWC_interp)
     for t = 1:length(Temps_to_fit)
         for z = 1:length(depth_grid)-1
@@ -323,8 +323,8 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
             end
         end
     end
-    evap_depth(:) = 0.075;
-    evap_depth_II(:) = 0.075;
+    % evap_depth(:) = 0.075;
+    % evap_depth_II(:) = 0.075;
     % ***************
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures

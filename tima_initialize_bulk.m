@@ -36,6 +36,7 @@ function [temperature_column_K] = tima_initialize_bulk(k_dry_std,rho_dry,m,theta
 %    Ari Koeppel -- Copyright 2023
 %   
 % See also 
+%   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity.
 %   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
     % ***************    
     
@@ -43,7 +44,7 @@ function [temperature_column_K] = tima_initialize_bulk(k_dry_std,rho_dry,m,theta
     % Inputs and constants:
     Soil_Temp_K = surface_temperature_C+273.15;
     Day_Dur = 1440/(dt/60); %#of mins/day div by min per interval
-    Depth_Max = sum(layer_size(2:end));
+    Depth_Max = sum(layer_size);
     NLAY = length(layer_size);
     k = k_dry_std.*ones(1,NLAY);
     k(NLAY) = k_dry_std;
@@ -56,7 +57,7 @@ function [temperature_column_K] = tima_initialize_bulk(k_dry_std,rho_dry,m,theta
     temperature_column_K = NaN(NDAYS,Day_Dur,NLAY); %Set up Matrix of Temperatures for each day, each minute, and each layer
     temperature_column_K(:,:,NLAY) = T_deep; %Constant lower boundary temp
     for ind = 2:NLAY-1
-        temperature_column_K(1,1,ind) = Soil_Temp_K(1)+(T_deep-Soil_Temp_K(1))*(sum(layer_size(2:ind)-layer_size(ind)/2)/Depth_Max);
+        temperature_column_K(1,1,ind) = Soil_Temp_K(1)+(T_deep-Soil_Temp_K(1))*(sum(layer_size(1:ind)-layer_size(ind)/2)/Depth_Max);
         k(ind) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(1,1,ind),T_std,VWC_column(1,end),theta_k,m,RH(1),material);
     end
     % ***************

@@ -240,6 +240,8 @@ for t = 1:length(air_temp_C)
         % q_G_surf = q_G_surf + 2*k(1)/layer_size(2)*delta; %for printing out
         %*******************************
         T_surf(t) = T_surf(t)+delta; %new T at surface
+        %ALTERNATE TAYLOR SERIES;
+        %T_surf(t) = 
         if ~isempty(T_adj1)
             if dug_VWC(t,1) > 0.03 && (t == ceil(T_adj1(1)))
                 T_surf(t) = T_adj1(2); %Value taken from T109 probe in watering can

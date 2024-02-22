@@ -39,23 +39,17 @@ function [Cp] = tima_specific_heat_model_DV1963(rho_dry,rho,Temp_K,material)
 %   Abu-Hamdeh -- clay: 1170-2250, sand: 830-1670
 %   Solid Rock Eq from Robertson, E.C. and Hemingway, B.S., 1995. Estimating heat capacity and heat content of rocks (No. 95-622). US Geological Survey.
 CpnT = @(T)8.95E-10.*T.^3-2.13E-6.*T.^2+0.00172.*T+0.716; %Waples2004a Temp in C
-if material == "basalt"
-    %Cp_solid = 1000.*(1.65291-0.9541E-4.*Temp_K-0.89296E4.*Temp_K.^-2-13.5666.*Temp_K.^-0.5);
+if material == "placeholder"%"basalt"
     Cp_solid = 898*CpnT(Temp_K-273.15)/CpnT(20); %basalt
 elseif material == "amorphous" %silica glass
-    % Cp_solid = 1000.*(1.27200E02-1.0777E-02.*Temp_K+4.3127E05.*Temp_K.^-2-1.4638E03.*Temp_K.^-0.5).*rho_dry./rho_glass+Cp_air.*(1-rho_dry./rho_glass);
     Cp_solid = 795*CpnT(Temp_K-273.15)/CpnT(20); %Volcanic tuff
 elseif material == "granite"
-    % Cp_solid = 1000.*(2.29354-1.9986E-4.*Temp_K+2.0526E4.*Temp_K.^-2-29.3049.*Temp_K.^-0.5);
     Cp_solid = 1172*CpnT(Temp_K-273.15)/CpnT(20);
 elseif material == "sandstone"
-    % Cp_solid = 1000.*(5.796E01+9.330E-03.*Temp_K+1.835E06.*Temp_K.^-2).*rho_dry./rho_quartz+Cp_air.*(1-rho_dry./rho_quartz);
     Cp_solid = 775*CpnT(Temp_K-273.15)/CpnT(20);
 elseif material == "clay"
-    %Cp_solid = 890;
     Cp_solid = 860*CpnT(Temp_K-273.15)/CpnT(20); %clay
-elseif material == "salt" %Al sulfate
-    % Cp_solid = 1000.*(7.877E02-9.899E-02.*Temp_K-8.615E03.*Temp_K.^-0.5).*rho_dry./rho_salt+Cp_air.*(1-rho_dry./rho_salt);
+elseif material == "salt" 
     Cp_solid = 880*CpnT(Temp_K-273.15)/CpnT(20); %Salt
 elseif material == "ice" %Waples 2004b
     Cp_solid = 7.8277.*(Temp_K-273.15)+2115;

@@ -1,4 +1,4 @@
-function [Temp_C,q_evap,k_eff_dt,q_conv,q_rad,q_G]= tima_heat_transfer_bulk_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+function [T_surf_C,T_sub_C,q_evap,k_eff_dt,q_conv,q_rad,q_G]= tima_heat_transfer_bulk_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
     windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
     pressure_air_pa,varargin)
@@ -299,5 +299,6 @@ for t = 2:length(air_temp_C)
         k_eff_dt(t,z) = k(z);
     end
 end
-Temp_C = T - 273.15;
+T_surf_C = T(:,1) - 273.15;
+T_sub_C = T(:,2:end)-273.15;
 
