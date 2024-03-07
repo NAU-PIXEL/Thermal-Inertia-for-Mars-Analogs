@@ -225,7 +225,7 @@ for t = 2:length(air_temp_C)
     %*******************************
 
     %*********Combine Heat transfer elements***********
-    W = q_G+q_conv+q_rad+q_evap_1; %Heat Flux, W/m^2
+    W = q_rad+q_G+q_conv+q_evap_1; %Heat Flux, W/m^2
     dT = dt/(Cp*rho*layer_size(1))*(W); %Temperature change for given thickness of material with known volumetric Cp
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
