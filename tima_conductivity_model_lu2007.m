@@ -66,19 +66,20 @@ if material == "basalt"
     k_solid = 1.18 + 474./(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
 % Roughly = 2.2, Bristow, 2002
 elseif material == "amorphous"
-    k_solid = 0.6924 + 0.0015.*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
+    k_solid = 0.718 + 0.0015.*(Soil_Temperature); %Piqueux and Christensen 2011/Wood2020/Clauser and Huenges [1995]/Siegler 2012
 elseif material == "granite"
-    k_solid = 2.0;
+    k_solid = 2.0; %Wood 2020
     % Roughly = 2.0 (granite), Bristow, 2002
 elseif material == "sandstone"
-    k_solid = 7.69; %(horai 1971)
+    k_solid =  0.18858+2192.2./Soil_Temperature; %Quartz Wood 2020/Birch and Clark 1940
+    %Roughly = 7.69; %(horai 1971)
 elseif material == "clay"
     k_solid = 2.9;
     % Roughly = 2.9 (clay), Bristow, 2002
 elseif material == "salt"
     k_solid = -2.11 + 2960./(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
 elseif material == "ice"
-    k_solid = 2.18;
+    k_solid = 632./Soil_Temperature +0.38-0.00197.*Soil_Temperature; %Wood 2020/Andersson and Inaba 2005
     % Roughly = 2.18, Bristow, 2002
 else
     k_solid = 2.2;
