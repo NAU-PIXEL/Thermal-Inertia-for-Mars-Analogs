@@ -28,6 +28,6 @@ function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho)
 %   rooty-soil: 1256;
 %   Abu-Hamdeh -- clay: 1170-2250, sand: 830-1670
 %   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity.
-Cp_H2O = 4186;
+Cp_H2O = 4186; %J/kgK
 Cp = (753.*rho_dry+Cp_H2O.*(rho-rho_dry))./rho;
 end
