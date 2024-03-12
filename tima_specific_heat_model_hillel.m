@@ -1,4 +1,4 @@
-function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho,VWC)
+function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho)
 % TIMA_HILLEL_SPECIFIC_HEAT_MODEL
 %   function to calculates specific heat as a funtion of volumetric water content
 %
@@ -27,6 +27,7 @@ function [Cp] = tima_specific_heat_model_hillel(rho_dry,rho,VWC)
 %   peat-dry: 1920, peat-10%h2o: 2302, peat-20%h2o: 3098, peat-30%h2o: 3433, peat-40%h2o: 3650, --porosity 80%
 %   rooty-soil: 1256;
 %   Abu-Hamdeh -- clay: 1170-2250, sand: 830-1670
-
-Cp = (2e6*rho_dry/1000/2.65+4.2e6*VWC)/rho;
+%   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity.
+Cp_H2O = 4186; %J/kgK
+Cp = (753.*rho_dry+Cp_H2O.*(rho-rho_dry))./rho;
 end

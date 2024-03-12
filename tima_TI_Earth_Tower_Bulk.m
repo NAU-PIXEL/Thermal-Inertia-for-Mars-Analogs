@@ -1,6 +1,6 @@
-function [] = tima_TI_Earth_Tower_General(TData,MData,outDIR,varargin)
+function [models,names] = tima_TI_Earth_Tower_Bulk(TData,MData,outDIR,varargin)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
-%   observations taken in the field to fit 2D multi-parameter model to each pixel. Justification for
+%   observations taken in the field to fit 1D multi-parameter model to each pixel. Justification for
 %   approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
 %
 % Description
@@ -31,6 +31,7 @@ function [] = tima_TI_Earth_Tower_General(TData,MData,outDIR,varargin)
 %       TData.solarzenith_apparent:
 %       TData.timed_albedo: 
 %       TData.timed_albedo_II: 
+%       TData.TIMESTAMP: 
 %       TData.temps_to_fit: 
 %       TData.temps_to_fit_II: 
 %       TData.windspeed_horiz_ms: 
@@ -85,24 +86,24 @@ p.parse(TData, MData, outDIR, varargin{:});
 p=p.Results;
 TwoSpot = p.TwoSpot;
 
-formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+formod = @(FitVar) tima_heat_transfer_bulk(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-        TData.dug_VWC_smooth,TData.evap_depth, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,'albedo',TData.timed_albedo);
+        TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
+        TData.pressure_air_Pa,'albedo',TData.timed_albedo,'material',MData.material);
 if TwoSpot == true
-    formod_II = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod_II = @(FitVar) tima_heat_transfer_bulk(FitVar(1),FitVar(2),FitVar(3),...
             FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
             TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-            TData.dug_VWC_smooth_II,TData.evap_depth_II, MData.VWC_depth_indices,TData.humidity,MData.emissivity,...
-            TData.pressure_air_Pa,'T_adj1',[2495,300.26],'T_adj2',[2521,301.95],'albedo',TData.timed_albedo_II);
+            TData.VWC_II_column,TData.evap_depth_II,TData.humidity,MData.emissivity,...
+            TData.pressure_air_Pa,'T_adj1',MData.T_adj1,'T_adj2',MData.T_adj2,'albedo',TData.timed_albedo_II,'material',MData.material);
 end
 
 %% Inputs to emcee
 if TwoSpot == true
-    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
+    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.4,'theta_k_max',0.75) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
 else
-    logPfuns = {@(theta)tima_ln_prior(theta) @(theta)-0.5*sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)};% a cell of function handles returning the log probality of a each outcome
+    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.4,'theta_k_max',0.75) @(theta)-0.5*sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)};% a cell of function handles returning the log probality of a each outcome
 end
 %% Run emcee
 % ***************
@@ -128,13 +129,12 @@ quant=quantile(models(:,r),[0.16,0.5,0.84]);
 RESULTS(:,r) = quant;
 end
 %%
-Temparature_Result = formod(RESULTS(2,:));
 if TwoSpot == true
-    chi_v = sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)]).^2./([err(MData.fit_ind); err_II(MData.fit_ind)]).^2)/(2*length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
+    chi_v = sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)/(2*length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 else
-    chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)).^2./err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
+    chi_v = sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)/(length(TData.temps_to_fit(MData.fit_ind))-length(MData.nvars));
 end
-Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density,0);
+Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
 TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
 TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
 TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
@@ -151,7 +151,7 @@ if TwoSpot == true
 else
     fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
 end
-fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f\nInitial Inputs:\n',MData.dt,MData.mccount/size(MData.minit,2),size(MData.minit,2),length(MData.layer_size));
+fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.mccount/size(MData.minit,2),size(MData.minit,2),length(MData.layer_size),MData.layer_size(1));
 names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'k-dry-300-lower (W/mK)' 'Depth Tansition (m)' };
 for i = 1:length(MData.vars_init)
     fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
