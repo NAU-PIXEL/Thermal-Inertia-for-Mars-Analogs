@@ -30,11 +30,11 @@ LogFile = dir('C:\Users\akoeppel\Desktop\TIMA_Outputs\WoodhouseSept2022_AllData_
 Data_orig = struct2cell(load(fullfile(LogFile.folder, LogFile.name)));
 Data_orig = Data_orig{:,:};
 Orig_Temps_to_Fit = Data_orig.Center_Sand_Temp_Corr; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
-Orig_err = 0.05.*(Orig_Temps_to_Fit);%(0.002.*(273.15+Orig_Temps_to_Fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
+Orig_err = (0.002.*(273.15+Orig_Temps_to_Fit)+0.20); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top
 observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
 mask = isnan(Orig_Temps_to_Fit);
-starts = [mask(1); (diff(mask)>0)];
-stops = [(diff(mask)<0);~mask(end)];
+% starts = [mask(1); (diff(mask)>0)];
+% stops = [(diff(mask)<0);~mask(end)];
 t_step = 1; %minutes
 if t_step == 1
     Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
@@ -63,16 +63,16 @@ Smooth_Window = 25/(dt/60); %Calculate a reasonable smoothing window for jumpy d
 
 % ***************
 %Measured by Hand
-k_meas_avg = 0.115; % SA1: 0.106, SA2: 0.115
+% k_meas_avg = 0.115; % SA1: 0.106, SA2: 0.115
 % TI_meas_avg = SA1: 149.1 SA2: 307.5; %Jm^{-2}K^{-1}s^{-1/2}
 density = 1487; %kg/m^3 SA1.1: 1232.16, SA1.2: 1487.23, SA2: 1351.33
 emissivity = 0.966; %SA_Avg:0.966, SA_Basalt: 0.961, SA_Sandstone: 0.944
-Med_Grain = 0.002; %m from sieving
-porosity = 1-density/2900;
-k_H2O = 0.61;
+% Med_Grain = 0.002; %m from sieving
+% porosity = 1-density/2900;
+% k_H2O = 0.61;
 T_std = 300; %K
 material = 'basalt';
-MappingMode = 0;
+% MappingMode = 0;
 NDAYS = 20;
 Depth_Max = 0.5;
 T_adj1=[1122,292.36];
@@ -92,7 +92,7 @@ Interpolated_Temp=Interpolated_Temp{:,1};
 % ***************
 % Observational Data:
 %To Do: Use only SWUpper and individ pixel albedo rather than homogenous SWNet for whole scene.
-R_Short_Net = Data.SWUpper_Avg-Data.SWLower_Avg;    
+% R_Short_Net = Data.SWUpper_Avg-Data.SWLower_Avg;    
 R_Short_Lower = Data.SWLower_Avg;
 R_Short_Lower(R_Short_Lower<0)=0;
 R_Short_Upper = Data.SWUpper_Avg;
@@ -103,8 +103,8 @@ Air_Temp_C = Data.AirTC; %Air Temp
 Humidity = Data.RH./100; %Rel humid
 Pressure_air_Pa = Data.BP_mbar.*100; %barometric pressure - converted to Pa later on
 Soil_Temp_C_Dry = Data.SoilTemp2; %In Situ near surf Soil Temperature from nearest Dry probe
-Soil_Temp_C_Wet = Data.SoilTemp6; %In Situ near surf Soil Temperature from nearest Wet probe
-Dewpoint_C = (243.04.*log(Humidity./100)+17.625.*Air_Temp_C./(243.04+Air_Temp_C))./(17.625-log(Humidity./100)+17.625.*Air_Temp_C./(243.04+Air_Temp_C));
+Soil_Temp_C_Wet = Data.SoilTemp1; %In Situ near surf Soil Temperature from nearest Wet probe
+Dewpoint_C = (243.04.*log(Humidity)+17.625.*Air_Temp_C./(243.04+Air_Temp_C))./(17.625-log(Humidity./100)+17.625.*Air_Temp_C./(243.04+Air_Temp_C));
 SolarAzimuthCwfromS = 180 - Data.SolarAzimuthAngledegCwFromN;
 f_diff = Data.DF;
 SolarZenith_Apparent = 90-Data.SolarElevationCorrectedForAtmRefractiondeg;
@@ -230,8 +230,8 @@ Dug_Temp_II = Dug_Temp_Wet;
 Temps_to_fit=Corrected_Dry_Point_Temp; %Define Wet fitting data here
 Timed_Albedo = Albedo;
 Soil_Temp = Soil_Temp_C_Dry;
-Dug_VWC = Dug_VWC_Ctl_smooth;
-%Dug_VWC(:,1) = SoilVWC_Ctl_smooth;
+Dug_VWC = Dug_VWC_Dry_smooth;
+Dug_VWC(:,1) = SoilVWC_Ctl_smooth;
 % Dug_VWC = Dug_VWC_Dry;
 % Dug_VWC(:,1) = Dug_VWC_Ctl(:,1);
 Dug_Temp = Dug_Temp_Dry;
@@ -256,7 +256,7 @@ evap_depth_II = ones(size(Air_Temp_C));
 evap_depth = ones(size(Air_Temp_C));
 
 %% Test Variables [k above transition depth; k below transition depth; Sensible Heat Multiplier];
-Vars_init = [0.14;1;400;3000;0.2;0.05];%[0.148;0.79;681;6700;0.29;0.044];%
+Vars_init = [0.17;0.73;410;3100;0.35;0.06];%[0.148;0.79;681;6700;0.29;0.044];%
 names = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 
@@ -265,7 +265,7 @@ fspace = 0.005+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to tes
 check = 0.*fspace;
 % ***************
 %Define Lower Boundary conditions
-T_Deep = mean([max(Soil_Temp_C_Dry),min(Soil_Temp_C_Dry)])+273.15; %Static mean of near surf temp
+T_Deep = mean(Dug_Temp(:,7))+273.15;%mean([max(Soil_Temp_C_Dry),min(Soil_Temp_C_Dry)])+273.15; %Static mean of near surf temp
 
 density_plus = density + 997*mean(Dug_VWC_Dry(:,end),'omitnan'); %Dry density + water content
 Cp_Deep = tima_specific_heat_model_hillel(density,density_plus);
@@ -273,7 +273,7 @@ Cp_Deep = tima_specific_heat_model_hillel(density,density_plus);
 RLAY = 1.3; %1.15 Thickness geometric multiplier of layers beneath Christian used 1.3
 % ***************
 %Loop to set up grid of layer thicknesses and match each layer to nearest VWC reading
-DSD = sqrt(86400/(pi)*Vars_init(1)/(density*Cp_Deep)); %diurnal Skin depth (meters)
+% DSD = sqrt(86400/(pi)*Vars_init(1)/(density*Cp_Deep)); %diurnal Skin depth (meters)
 for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolution w/o becomming unstable or costing too much computation time)
     % *************** Subsurface Resolution Parameters and Lower Boundary ***************
     FLAY = fspace(i); %Thickness of emitting top-most layer
@@ -286,42 +286,47 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     if Layer_size_B(1) > 0.10
         error('Layer 1 reached too big at over 10 cm')
     end
+    count = 2;
+    [M,VWC_depth_indices(1)] = min(abs(Layer_size_B-Layer_size_B/2-VWC_dug_depth));
     while sum(Layer_size_B) < Depth_Max
-      Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters) depth_grid = FLAY*RLAY.^(0:n-1);
+        Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters)
+        [M,VWC_depth_indices(count)] = min(abs(sum(Layer_size_B)-Layer_size_B(count)/2-VWC_dug_depth));
+        count = count+1;
     end
-    depth_grid = cumsum(Layer_size_B)-Layer_size_B/2;
-    [X,Y] = meshgrid(VWC_dug_depth,1:length(Air_Temp_C));
-    [Xq,Yq] = meshgrid(depth_grid,1:length(Air_Temp_C));
-    %plot3(X,Y,Dug_VWC_Dry)
-    Dug_VWC_interp = interp2(X,Y,Dug_VWC,Xq,Yq,'makima');Dug_VWC_interp(Dug_VWC_interp<0)=0;
-    Dug_VWC_II_interp = interp2(X,Y,Dug_VWC_II,Xq,Yq,'makima');Dug_VWC_II_interp(Dug_VWC_II_interp<0)=0;
-    %plot3(Xq,Yq,Dug_VWC_interp)
-    for t = 1:length(Air_Temp_C)
-        for z = 1:length(depth_grid)-1
-            dVWC(z) = (Dug_VWC_II_interp(t,z+1)-Dug_VWC_II_interp(t,z))./(depth_grid(z+1)-depth_grid(z));
-            if z == 1 && Dug_VWC_II_interp(t,1) > 0 && dVWC(1)<= 0
-                evap_depth_II(t) = depth_grid(1);
-                break
-            elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
-                evap_depth_II(t) = depth_grid(z);
-                break
-            end
-        end
-        for z = 1:length(depth_grid)-1
-            dVWC(z) = (Dug_VWC_interp(t,z+1)-Dug_VWC_interp(t,z))./(depth_grid(z+1)-depth_grid(z));
-            if z == 1 && Dug_VWC_interp(t,1) > 0 && dVWC(1)<= 0
-                evap_depth(t) = depth_grid(1);
-                break
-            elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
-                evap_depth(t) = depth_grid(z);
-                break
-            end
-        end
-    end
+
+    %depth_grid = cumsum(Layer_size_B)-Layer_size_B/2;
+    % [X,Y] = meshgrid(VWC_dug_depth,1:length(Air_Temp_C));
+    % [Xq,Yq] = meshgrid(depth_grid,1:length(Air_Temp_C));
+    % %plot3(X,Y,Dug_VWC_Dry)
+    % Dug_VWC_interp = interp2(X,Y,Dug_VWC,Xq,Yq,'makima');Dug_VWC_interp(Dug_VWC_interp<0)=0;
+    % Dug_VWC_II_interp = interp2(X,Y,Dug_VWC_II,Xq,Yq,'makima');Dug_VWC_II_interp(Dug_VWC_II_interp<0)=0;
+    % %plot3(Xq,Yq,Dug_VWC_interp)
+    % for t = 1:length(Air_Temp_C)
+    %     for z = 1:length(depth_grid)-1
+    %         dVWC(z) = (Dug_VWC_II_interp(t,z+1)-Dug_VWC_II_interp(t,z))./(depth_grid(z+1)-depth_grid(z));
+    %         if z == 1 && Dug_VWC_II_interp(t,1) > 0 && dVWC(1)<= 0
+    %             evap_depth_II(t) = depth_grid(1);
+    %             break
+    %         elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
+    %             evap_depth_II(t) = depth_grid(z);
+    %             break
+    %         end
+    %     end
+    %     for z = 1:length(depth_grid)-1
+    %         dVWC(z) = (Dug_VWC_interp(t,z+1)-Dug_VWC_interp(t,z))./(depth_grid(z+1)-depth_grid(z));
+    %         if z == 1 && Dug_VWC_interp(t,1) > 0 && dVWC(1)<= 0
+    %             evap_depth(t) = depth_grid(1);
+    %             break
+    %         elseif z > 1 && dVWC(z)-dVWC(z-1) < 0
+    %             evap_depth(t) = depth_grid(z);
+    %             break
+    %         end
+    %     end
+    % end
     % ***************
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures
-    Subsurface_Temperatures = tima_initialize_bulk(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC_interp,Humidity,NDAYS,material);
+    Subsurface_Temperatures = tima_initialize_bulk(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC,VWC_depth_indices,Humidity,NDAYS,material);
     Subsurface_Temperatures_Running(:,:) = Subsurface_Temperatures(1,:,:)-273.15; %Set up array using first day
     for D = 2:size(Subsurface_Temperatures,1) % for plotting
         TEMP(:,:) = Subsurface_Temperatures(D,:,:)-273.15;
@@ -333,13 +338,13 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     formod = @(FitVar) tima_heat_transfer_bulk(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
-        Dug_VWC_interp,evap_depth,Humidity,emissivity,...
+        Dug_VWC,VWC_depth_indices,Humidity,emissivity,...
         Pressure_air_Pa,'albedo',Timed_Albedo);
 
     formod_II = @(FitVar) tima_heat_transfer_bulk(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
-        Dug_VWC_II_interp,evap_depth_II,Humidity,emissivity,...
+        Dug_VWC_II,VWC_depth_indices,Humidity,emissivity,...
         Pressure_air_Pa,'T_adj1',T_adj1,'T_adj2',T_adj2,'albedo',Timed_Albedo_II);
 
     Test_Result = formod(Vars_init(:));
@@ -357,7 +362,7 @@ M(1)= plot(Subsurface_Temperatures_Running((end-1440/(dt/60)+1):end,1),'r', 'Lin
 hold on
 for i = 2:size(Subsurface_Temperatures_Running,2)
     M(i) = plot(Subsurface_Temperatures_Running((end-1440/(dt/60)+1):end,i),'b--', 'LineWidth', 2,'DisplayName','Subsurface_Modeled');
-hold on
+    hold on
 end
 SS= plot(Soil_Temp_C_Dry(1:1440/(dt/60)),'k','LineWidth', 1 ,'DisplayName','Depth Temp Observed'); %1st day only (1440s)
 hold off
@@ -368,7 +373,9 @@ ttl = sprintf('Day 1 Repeated, %0.f layers, RLAY = %0.2f, FLAY = %0.2f',length(L
 title(ttl)
 T_Test(:) = T_Start-273.15;%SUB_TEMPS((end-Time_from_end)/(dt/60),:);
 figure
-plot([cumsum(Layer_size_B)], [T_Test]);
+plot([cumsum(Layer_size_B)-Layer_size_B./2], [T_Test]);
+hold on
+plot(VWC_dug_depth, Dug_Temp_Dry((1440)/(dt/60),:));
 xlabel('Depth (m)')
 ylabel('Temperature (C)')
 
@@ -378,9 +385,9 @@ ylabel('Temperature (C)')
 
 %% TEST model to make sure it's in the right ball park
 % Test_Result = formod(Vars_init(:));
-if sum(isnan(Test_Result))>1 || ~isreal(Test_Result)
-    error('Complex result likely because division by zero in latent heat model')
-end
+% if sum(isnan(Test_Result))>1 || ~isreal(Test_Result)
+%     error('Complex result likely because division by zero in latent heat model')
+% end
 figure
 hold on
 M(1) = fill([Data.TIMESTAMP(fit_ind); flipud(Data.TIMESTAMP(fit_ind))],[Orig_Temps_to_Fit(~mask)-Orig_err(~mask);flipud(Orig_Temps_to_Fit(~mask)+Orig_err(~mask))], [128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
@@ -388,7 +395,7 @@ set(M(1), 'edgecolor', 'none');
 set(M(1), 'FaceAlpha', 0.5);
 G = plot(Data.TIMESTAMP,Soil_Temp,'b','DisplayName','Measured');
 F = scatter(Data_orig.TIMESTAMP,Orig_Temps_to_Fit,1,'k.','DisplayName','FLIR Observations');
-leg = sprintf('Top %0.1f cm modeled temperature', FLAY*DSD*100);
+leg = sprintf('Top %0.1f cm modeled temperature', FLAY*100);
 M(2)= plot(Data.TIMESTAMP,Test_Result(:,1),'r', 'LineWidth', 2 ,'DisplayName',leg);
 hold off
 xlabel('Time (hr)');
@@ -423,8 +430,8 @@ nvars = 6;
 %   Time data - struct of timeseries data variables 
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
-      TData.VWC_column=Dug_VWC_interp;
-      TData.VWC_II_column=Dug_VWC_II_interp;
+      TData.VWC_column=Dug_VWC;
+      TData.VWC_II_column=Dug_VWC_II;
       TData.err = err;
       TData.err_II = err_II;
       TData.evap_depth=evap_depth;
