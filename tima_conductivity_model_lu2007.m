@@ -48,19 +48,16 @@ function [k_eff] = tima_conductivity_model_lu2007(k_dry_std,Soil_Temperature,T_s
 %   Lee & Pielke 1992: Field capacity- Sand: 0.135, Loam: 0.255, Clay: 0.367, Peat: 0.535
 %       Saturation- Sand: 0.395, Loam: 0.451, Clay: 0.482, Peat: 0.863
 
-
-% T_std = 300; % Temperature standard for thermal conductivity (K)
-
 % Air
-k_air = 0.024+7.73E-5.*(Soil_Temperature-273.15)-2.6E-8.*(Soil_Temperature-273.15).^2-3E-05.*exp(0.0591.*(Soil_Temperature-273.15)).*Soil_RH; %Bristow 2002/Campbell 1994 with Tsilingiris 2008 Fig 3 assuming soil is equilibrated with air
-k_air_avg = 0.024+7.73E-5.*(T_std-273.15)-2.6E-8.*(T_std-273.15)^2; %Thermal conductivity of air at zero moisture and standard temperature
+k_air = 0.024+7.78E-5.*(Soil_Temperature-273.15)-3E-05.*exp(0.0591.*(Soil_Temperature-273.15)).*Soil_RH; %Bristow 2002/Campbell 1994 with Tsilingiris 2008 Fig 3 assuming soil is equilibrated with air
+k_air_avg = 0.024+7.78E-5.*(T_std-273.15); %Thermal conductivity of air at zero moisture and standard temperature
 k_dry_mod = 2*k_air.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 - independent of composition and grain size
 k_dry_mod_avg = 2*k_air_avg.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 R > 0.98 within range 0.01-0.035 - independent of composition and grain size
 k_dry_mod(k_dry_mod<k_air) = k_air(k_dry_mod<k_air);
 k_dry_mod_avg(k_dry_mod_avg<k_air_avg) = k_air_avg(k_dry_mod_avg<k_air_avg);
 k_dry = k_dry_std.*k_dry_mod./k_dry_mod_avg; % Since Piquex 2009a Fig 8 was modeled for a specific material type, k_dry_mod does not encessarily apply here, but the ratio of k_dry_mod/k_dry_mod_avg should be similar.
 
-k_H2O = -1.1e-5.*(Soil_Temperature - 273.15).^2 + 0.00234.*(Soil_Temperature - 273.15) + 0.552; %Bristow 2002 or 0.59 from Zhang and Wang 2017 or 0.6096 from Haigh 2012
+k_H2O = 0.61;%-1.1e-5.*(Soil_Temperature - 273.15).^2 + 0.00234.*(Soil_Temperature - 273.15) + 0.552; %Bristow 2002 or 0.59 from Zhang and Wang 2017 or 0.6096 from Haigh 2012
 % k-bulk-dry from theory
 if material == "basalt"
     k_solid = 1.18 + 474./(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
