@@ -1,6 +1,6 @@
 function [T_surf_C,T_sub_C,q_evap,k_eff_dt,q_conv,q_rad,q_G]= tima_heat_transfer_bulk_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,VWC_depth_indices,RH,emissivity,...
     pressure_air_pa,varargin)
 %***************
 % TIMA_HEAT_TRANSFER
@@ -249,14 +249,14 @@ for t = 2:length(air_temp_C)
     for z = 2:NLAY-1 %layer loop
 %           k_H2O = 1.1e-05*(T(t-1,1)- 273.15).^2 + 0.00234*(T(t-1,1)- 273.15) + 0.552; %Bristow 2002, temp dep
         if z < D_z
-            if sum(layer_size(1:z)) <= evap_depth(t) %Wang 2016 inflection point
-                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
+            if sum(layer_size(1:z)) <= 0.075%evap_depth(t) %Wang 2016 inflection point
+                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
             else
-                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
+                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
                 q_evap_z = 0; %Evap_Coeff
             end
-            k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH, material);
-            rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,z); %H2O dep
+            k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,dug_VWC(t-1,VWC_depth_indices(z)),theta_k,m,Soil_RH, material);
+            rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,VWC_depth_indices(z)); %H2O dep
             Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);
                         %Subsurface Multip Factors (Kieffer, 2013)
         else
@@ -268,14 +268,14 @@ for t = 2:length(air_temp_C)
                 q_evap_z = 0; %Evap_Coeff
                 Soil_RH = 1;
             else
-                if sum(layer_size(1:z)) <= evap_depth(t)
-                    [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
+                if sum(layer_size(1:z)) <= 0.075%evap_depth(t)
+                    [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
                 else
-                    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,z));
+                    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
                     q_evap_z = 0; %Evap_Coeff
                 end
-                k(z) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,dug_VWC(t-1,z),theta_k,m,Soil_RH,material);
-                rho = rho_dry_lower + rho_H2O*dug_VWC(t-1,z); %H2O dep
+                k(z) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,dug_VWC(t-1,VWC_depth_indices(z)),theta_k,m,Soil_RH,material);
+                rho = rho_dry_lower + rho_H2O*dug_VWC(t-1,VWC_depth_indices(z)); %H2O dep
                 Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);
             end
         end
@@ -286,12 +286,12 @@ for t = 2:length(air_temp_C)
         dT = F1*(T(t-1,z+1)+F2*T(t-1,z)+F3*T(t-1,z-1))+dt/(Cp*rho*layer_size(z))*q_evap_z;
         T(t,z) = T(t-1,z)+dT;
         if ~isempty(T_adj1)
-            if dug_VWC(t,z) > 0.03 && (t == T_adj1(1))
+            if dug_VWC(t,VWC_depth_indices(z)) > 0.03 && (t == T_adj1(1))
                 T(t,z) = T_adj1(2); %Value taken from T109 probe in watering can
             end
         end
         if ~isempty(T_adj2)
-            if dug_VWC(t,z) > 0.02 && (t == T_adj2(1))
+            if dug_VWC(t,VWC_depth_indices(z)) > 0.02 && (t == T_adj2(1))
                 T(t,z) = T_adj2(2); %Value taken from T109 probe in watering can
             end
         end
