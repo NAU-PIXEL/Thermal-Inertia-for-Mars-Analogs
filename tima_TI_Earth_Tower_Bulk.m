@@ -100,8 +100,13 @@ if TwoSpot == true
 end
 
 %% Inputs to emcee
+k_air = 0.024; % Tsilingiris 2008
+k_H2O = 0.61;
+k_solid = 2.2; % Bristow, 2002 - basaslt = 2.2, clay = 2.9, qtz = 8.8, Ice = 2.18, Granite = 2.0.
 if TwoSpot == true
-    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.4,'theta_k_max',0.75) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
+    k_parallel = k_solid*(1-MData.vars_init(5))+k_air*(MData.vars_init(5)-max(max(TData.VWC_II_column)))+k_H2O*(max(max(TData.VWC_II_column)));
+    k_series = 1/(MData.vars_init(5)/k_air+(1-MData.vars_init(5))/k_solid);
+    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.4,'theta_k_max',0.75,'k_upper_min',k_series,'k_upper_max',k_parallel) @(theta)-0.5*sum(([TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod); TData.temps_to_fit_II(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod_II)]).^2./([TData.err(MData.fit_ind); TData.err_II(MData.fit_ind)]).^2)};% a cell of function handles returning the log probality of a each outcome
 else
     logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.4,'theta_k_max',0.75) @(theta)-0.5*sum((TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(theta,MData.fit_ind,formod)).^2./TData.err(MData.fit_ind).^2)};% a cell of function handles returning the log probality of a each outcome
 end
