@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Koeppel
+    given-names: Ari
+    orcid: https://orcid.org/0000-0002-9809-4863
+  - family-names: Edwards
+    given-names: Christopher Scott
+  - family-names: Edgar
+    given-names: Lauren A.
+  - family-names: Nowicki
+    given-names: Scott
+  - family-names: Bennett
+    given-names: Kristen A.
+  - family-names: Gullikson
+    given-names: Amber
+  - family-names: Piqueux
+    given-names: Sylvain
+  - family-names: Eifert
+    given-names: Helen
+  - family-names: Chapline
+    given-names: Daphne
+  - family-names: Rogers
+    given-names: A. Deanne
+title: "Thermal Inertia for Mars Analogs"
+version: 1.0
+identifiers:
+date-released: 2024-06-20
