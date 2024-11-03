@@ -1,4 +1,4 @@
-function [] = tima_plot_results_skin(TData,MData,models,names,varargin)
+function [] = tima_plot_results_skin_treatment(TData,MData,models,names,varargin)
 p = inputParser;
 p.addRequired('TData',@isstruct);
 p.addRequired('MData',@isstruct);
