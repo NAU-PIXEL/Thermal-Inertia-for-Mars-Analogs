@@ -1,4 +1,4 @@
-function [] = tima_TI_Earth_Mapping_General(TData,MData,inDIR,outDIR,row,varargin)
+function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %% TIMA_TI_EARTH_MAPPING_GENERAL (TI Mars Analogs)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
 %   observations taken in the field to fit 1D multi-parameter model to each pixel. Justification for
