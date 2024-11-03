@@ -70,7 +70,7 @@ LineCPData(LineDepthData>top_layer) = 700; %~Cp sandy(800) basalt(600)
 % LineTKData(LineDepthData<=Layer_size_B(1)) = 2; %k ice (maybe smaller with water (0.690) vs pure ice (2.22))
 
 status = copyfile(GeoRefFileName,[newfilename_prefix,'TI.tif'],'f');
-t = Tiff(newfilename_prefix,'r+');
+t = Tiff([newfilename_prefix,'TI.tif'],'r+');
 T_File = sqrt(LineTKData.*LineCPData.*LinerhoData);
 setTag(t,'BitsPerSample',32); %An internal note to program to treat data as 32 Bit float rather than uint16 -not actually written to file
 setTag(t,'SampleFormat',Tiff.SampleFormat.IEEEFP); %An internal note to program to treat data as ~float rather than uint16 -not actually written to file
@@ -78,7 +78,7 @@ write(t,single(T_File));
 close(t);
 
 status = copyfile(GeoRefFileName,[newfilename_prefix,'Depth.tif'],'f');
-tt = Tiff(newfilename_prefix,'r+');
+tt = Tiff([newfilename_prefix,'Depth.tif'],'r+');
 T_File = LineDepthData;
 setTag(tt,'BitsPerSample',32); %An internal note to program to treat data as 32 Bit float rather than uint16 -not actually written to file
 setTag(tt,'SampleFormat',Tiff.SampleFormat.IEEEFP); %An internal note to program to treat data as ~float rather than uint16 -not actually written to file
@@ -86,7 +86,7 @@ write(tt,single(T_File));
 close(tt);
 
 status = copyfile(GeoRefFileName,[newfilename_prefix,'fval.tif'],'f');
-ttt = Tiff(newfilename_prefix,'r+');
+ttt = Tiff([newfilename_prefix,'fval.tif'],'r+');
 T_File = LinefvalData;
 setTag(ttt,'BitsPerSample',32); %An internal note to program to treat data as 32 Bit float rather than uint16 -not actually written to file
 setTag(ttt,'SampleFormat',Tiff.SampleFormat.IEEEFP); %An internal note to program to treat data as ~float rather than uint16 -not actually written to file

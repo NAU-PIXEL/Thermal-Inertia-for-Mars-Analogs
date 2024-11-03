@@ -11,8 +11,8 @@ function [models,names] = tima_TI_Earth_Tower_Bulk(TData,MData,outDIR,varargin)
 %   transition, pore-network-connectivity, Surf. ex. coef. (sensible), Surf. ex. coef. (latent), Soil Moist. Inflection (conductivity) (%), Soil Moist. Infl. (latent heat) (%)
 %
 % SYNTAX
-%   tima_TI_Earth_Tower_General(TData,MData,outDIR)
-%   tima_TI_Earth_Tower_General(TData,MData,outDIR,'TwoSpot',true)
+%   tima_TI_Earth_Tower_Bulk(TData,MData,outDIR)
+%   tima_TI_Earth_Tower_Bulk(TData,MData,outDIR,'TwoSpot',true)
 
 % Input Parameters
 %   TData: Time data - struct of timeseries data variables 
@@ -90,13 +90,13 @@ formod = @(FitVar) tima_heat_transfer_bulk(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,'albedo',TData.timed_albedo,'material',MData.material);
+        TData.pressure_air_Pa,'albedo',TData.timed_albedo,'material',MData.material);%,'e_fxn',MData.e_fxn);
 if TwoSpot == true
     formod_II = @(FitVar) tima_heat_transfer_bulk(FitVar(1),FitVar(2),FitVar(3),...
             FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
             TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
             TData.VWC_II_column,TData.evap_depth_II,TData.humidity,MData.emissivity,...
-            TData.pressure_air_Pa,'T_adj1',MData.T_adj1,'T_adj2',MData.T_adj2,'albedo',TData.timed_albedo_II,'material',MData.material);
+            TData.pressure_air_Pa,'T_adj1',MData.T_adj1,'T_adj2',MData.T_adj2,'albedo',TData.timed_albedo_II,'material',MData.material,'e_fxn',MData.e_fxn);
 end
 
 %% Inputs to emcee

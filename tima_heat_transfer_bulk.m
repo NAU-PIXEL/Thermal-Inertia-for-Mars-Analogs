@@ -124,6 +124,7 @@ p.addParameter('aspect_cwfromS',[],@(x)isnumeric(x)&&isscalar(x));
 p.addParameter('solar_azimuth_cwfromS',[],@(x)isnumeric(x)&&isvector(x));
 p.addParameter('solar_zenith_apparent',[],@(x)isnumeric(x)&&isvector(x));
 p.addParameter('f_diff',[],@(x)isnumeric(x)&&isvector(x));
+p.addParameter('e_fxn',[],@(x)isa(x,'cfit'));
 p.addParameter('shadow_data',[],@isnumeric);
 p.addParameter('shadow_time_ind',[],@isnumeric);
 p.addParameter('material',"basalt",@ischar);
@@ -148,7 +149,7 @@ material = p.material;
 MappingMode = p.MappingMode;
 T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
 T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
-
+e_fxn = p.e_fxn;
 % ***************
 
 % ***************
@@ -157,6 +158,9 @@ air_temp_K = air_temp_C+273.15;
 % k_H2O = 0.6096; %from Haigh 2012
 rho_H2O = 997; %kg/m^3, does not vary much in T range so assume constant density
 sigma = 5.670374419e-8; % Stefan-Boltzmann Const
+k_b = 1.380649000000000e-23; 
+h = 6.626070150000000e-34;
+c = 299792458;
 omega = (1+cosd(slope_angle))/2; % visible sky fraction ISOtropic sky model
 % T_std = 300; %Standard temperature K
 % ***************
@@ -191,29 +195,34 @@ for t = 2:length(air_temp_C)
     %*********SENSIBLE HEAT***********
     q_conv = tima_sensible_heat_model(CH,windspeed_horiz(t-1),air_temp_K(t-1),T(t-1,1));
     %*******************************
-          
-           
+    %********Spectral emissivity*********
+    if isempty(e_fxn)
+        r_long_lower = emissivity*sigma*T(t-1,1)^4;
+    else
+        M = @(lambda) 2.*pi.*h.*c.^2.*e_fxn(lambda)'./(lambda.^5)./(exp(h.*c./(lambda.*k_b.*T(t-1,1)))-1);
+        r_long_lower = integral(M,4.5E-6,42E-6); %Integrate radiance over CNR4 range.
+    end
     %*********Radiative Flux***********
     if MappingMode == false %Tower mode
         if isempty(solar_azimuth_cwfromS) || isempty(solar_zenith_apparent) || isempty(aspect_cwfromS) || isempty(f_diff) && slope_angle == 0
             if isempty(albedo)
-                q_rad = r_short_upper(t-1)-r_short_lower(t-1)+emissivity*r_long_upper(t-1)-emissivity*sigma*T(t-1,1)^4;% %net heat flux entering surface assuming no transmission (Yes emissivity term in down)
+                q_rad = r_short_upper(t-1)-r_short_lower(t-1)+emissivity*r_long_upper(t-1)-r_long_lower;% %net heat flux entering surface assuming no transmission (Yes emissivity term in down)
             else
-                q_rad = (1-albedo(t-1))*r_short_upper(t-1)+emissivity*r_long_upper(t-1)-emissivity*sigma*T(t-1,1)^4; %net heat flux entering surface
+                q_rad = (1-albedo(t-1))*r_short_upper(t-1)+emissivity*r_long_upper(t-1)-r_long_lower; %net heat flux entering surface
             end
         else
             phi = solar_azimuth_cwfromS(t-1);
             Z = solar_zenith_apparent(t-1);
             Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);Incidence(Incidence>1) = 1; Incidence(Incidence<-1) = -1;
-            q_rad = (1-albedo(t-1))*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*emissivity*sigma*T(t-1,1)^4; %net heat flux entering surface
+            q_rad = (1-albedo(t-1))*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
         end
     else %Mapping Mode
         phi = solar_azimuth_cwfromS(t-1);
         Z = solar_zenith_apparent(t-1);
         Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);Incidence(Incidence>1) = 1; Incidence(Incidence<-1) = -1;
-        q_rad_full = (1-albedo)*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*emissivity*sigma*T(t-1,1)^4; %net heat flux entering surface
+        q_rad_full = (1-albedo)*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
         Lit_Fraction = shadow_data(shadow_time_ind(t-1)); %Assumes shadow = 0, and unshadowed = 1;
-        q_rad = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*emissivity*sigma*T(t-1,1)^4); %net heat flux entering surface
+        q_rad = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
     end
     %*******************************
     
