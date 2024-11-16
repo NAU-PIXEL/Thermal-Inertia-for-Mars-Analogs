@@ -1,4 +1,4 @@
-function [temperature_column_K] = tima_initialize_bulk(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,VWC_depth_indices,RH,NDAYS,material)
+function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,VWC_depth_indices,RH,NDAYS,material)
 %***************
 % TIMA_INITIALIZE
 %   Simple version of Heat tansfer model used to estimate a realistic subsurface 

@@ -1,0 +1,22 @@
+1D thermal model results considering one location (note: Black Point Update with Ben).
+Datetime: 1448-25-Oct-2024 Runtime: 1444.8 s
+Time step (s): 60
+Nsteps: 1000
+Nwalkers: 50
+# of Layers: 12, Top Layer Size (m):  0.0075
+Initial Inputs:
+k-dry-300-upper (W/mK) = 0.2400
+Pore network con. par. (mk) = 0.9000
+Surf. ex. coef. (CH) = 533.0000
+Surf. ex. coef. (CE) = 694.0000
+Soil Moist. Infl. (thetak) (%) = 0.5000
+Soil Moist. Infl. (thetaE) (%) = 0.0500
+Reduced Chi Squared: -0.00
+RESULTS [16th pctl, 50th pctl, 84th pctl]:
+k-dry-300-upper (W/mK) = 0.5517, 1.6209, 2.9110
+Pore network con. par. (mk) = 0.5313, 0.8664, 1.1478
+Surf. ex. coef. (CH) = 201.6386, 546.5953, 835.5078
+Surf. ex. coef. (CE) = 1577.0344, 5008.3063, 8471.7920
+Soil Moist. Infl. (thetak) (%) = 0.1465, 0.3965, 0.6375
+Soil Moist. Infl. (thetaE) (%) = 0.1140, 0.3640, 0.6049
+TI = 703.3352, 1205.5917, 1615.6487
