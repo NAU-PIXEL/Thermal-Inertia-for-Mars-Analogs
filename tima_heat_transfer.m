@@ -268,7 +268,7 @@ for t = 2:length(air_temp_C)
                 rho = 1500; %kg/m^3
                 Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
                 q_evap_z = 0; %Evap_Coeff
-                Soil_RH = 1;
+                %Soil_RH = 1;
                 k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
             else
                 if sum(layer_size(1:z)) <= 0.075%evap_depth(t)

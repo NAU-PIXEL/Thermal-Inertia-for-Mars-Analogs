@@ -22,7 +22,7 @@ format compact; format longG;
 %Find and load a .mat file with data already synchronized and
 %clipped to the proper time window. See script: PSTAR_Data_Integration_SunsetMay2021_Moving.m
 % Retrieve data file path name
-[LogFile, LogFilePath] = uigetfile('X:\common\FIELD_CAMPAIGNS\Iceland_May2022\Thermophysical_Data\Glacier_Margin\Ground_Station\Glacier_Margin_AllData_ConstVignetCorrection_Clipped_DFcalc.mat','Select data file containing micrometeorological and thermal data'); %## prompt for log
+[LogFile, LogFilePath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\IcelandEmergingEsker2022_10cm\EmergingEsker2022_LoggerData.mat','Select data file containing micrometeorological and thermal data'); %## prompt for log
 % ***************
 
 % ***************
@@ -93,7 +93,7 @@ Smooth_Window = 25/(dt/60); %Calculate a reasonable smoothing window for jumpy d
 
 % ***************
 %% Measured by Hand
-[AddlInputs, AIPath] = uigetfile('X:\common\FIELD_CAMPAIGNS\Iceland_May2022\Thermophysical_Data\Glacier_Margin\Ground_Station\Additional_Inputs.txt','Select txt file containing density, emissivity, material and max depth inputs');
+[AddlInputs, AIPath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\IcelandEmergingEsker2022_10cm\Additional_Inputs.txt','Select txt file containing density, emissivity, material and max depth inputs');
 fileID = fopen(fullfile(AIPath,AddlInputs), 'r');
 if fileID == -1
     error('Could not open file: %s', filename);
@@ -125,29 +125,29 @@ fclose(fileID);
 density = Addldata{1}; %kg/m^3
 emissivity = Addldata{2};
 material = Addldata{3};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
-material_lower = Addldata{23};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
+material_lower = Addldata{24};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
 Depth_Max = Addldata{4};%m
 VWC_dug_depth = [Addldata{5},Addldata{6},Addldata{7},Addldata{8}]./100; %Depth in m of probe elements
 T_std = Addldata{9};
 NDAYS = Addldata{10};
-Vars_init = [Addldata{11};Addldata{12};Addldata{13};Addldata{14};Addldata{15};Addldata{16};Addldata{17}];%[0.24;0.9;533;694;0.5;0.05];%
+Vars_init = [Addldata{11};Addldata{12};Addldata{13};Addldata{14};Addldata{15};Addldata{16};Addldata{17};Addldata{18}];%[0.24;0.9;533;694;0.5;0.05];%
 % Check if the input materialType is valid
 if ~ismember(material, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'})
     error('Error: The material type "%s" is not valid. Please choose from: %s', ...
           materialType, strjoin(validMaterials, ', '));
 end
 % Simulation Parameters
-nwalkers = Addldata{18}; %100
-nstep = Addldata{19}; %10000
+nwalkers = Addldata{19}; %100
+nstep = Addldata{20}; %10000
 mccount = nstep*nwalkers;% This is the total number, -NOT the number per chain.% What is the desired total number of monte carlo proposals.
-burnin = Addldata{20}; %fraction of results to omit
-sigma = Addldata{21}; % dictates sinsitivity of walkers to change
+burnin = Addldata{21}; %fraction of results to omit
+sigma = Addldata{22}; % dictates sinsitivity of walkers to change
 rng(49)  % For reproducibility
+nvars = Addldata{23};
 minit = zeros(length(Vars_init),nwalkers);
 for i = 1:nwalkers
     minit(:,i) = Vars_init + sigma*Vars_init.*randn(length(Vars_init),1);
 end
-nvars = Addldata{22};
 %% ***************
 TT = timetable(Data.TIMESTAMP,Temps_to_fit);
 Interpolated_Temp = fillmissing(TT,'linear');
@@ -221,16 +221,16 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     while sum(Layer_size_B) < Depth_Max
         Layer_size_B = cat(2,Layer_size_B,max(Layer_size_B)*RLAY); %(meters)
     end
-    VWC_Column = NaN([length(WindSpeed_ms_10) length(Layer_size_B)]);
+    VWC_column = NaN([length(WindSpeed_ms_10) length(Layer_size_B)]);
     for t = 1:length(WindSpeed_ms_10)
-        VWC_Column(t,:) = interp1(VWC_dug_depth,Dug_VWC_smooth(t,:),cumsum(Layer_size_B),'linear','extrap');
-        VWC_Column(t,cumsum(Layer_size_B)<=min(VWC_dug_depth)) = Dug_VWC_smooth(t,1);
-        VWC_Column(t,cumsum(Layer_size_B)>=max(VWC_dug_depth)) = Dug_VWC_smooth(t,end);
+        VWC_column(t,:) = interp1(VWC_dug_depth,Dug_VWC_smooth(t,:),cumsum(Layer_size_B),'linear','extrap');
+        VWC_column(t,cumsum(Layer_size_B)<=min(VWC_dug_depth)) = Dug_VWC_smooth(t,1);
+        VWC_column(t,cumsum(Layer_size_B)>=max(VWC_dug_depth)) = Dug_VWC_smooth(t,end);
     end
 
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures
-    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,Dug_VWC,VWC_depth_indices,Humidity,NDAYS,material);
+    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,VWC_column,Humidity,NDAYS,material);
     Subsurface_Temperatures_Running(:,:) = Subsurface_Temperatures(1,:,:)-273.15; %Set up array using first day
     for D = 2:size(Subsurface_Temperatures,1) % for plotting
         TEMP(:,:) = Subsurface_Temperatures(D,:,:)-273.15;
@@ -242,7 +242,7 @@ for i = 1:length(fspace) %Loop to optimize layer thickness (i.e. highest resolut
     formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
-        Dug_VWC,VWC_depth_indices,Humidity,emissivity,...
+        VWC_column,Humidity,emissivity,...
         Pressure_air_Pa,'albedo',Albedo);%,'e_fxn',WHspectralemissivityfxn);
 
     Test_Result = formod(Vars_init(:));
@@ -280,10 +280,6 @@ plot(VWC_dug_depth, Dug_Temp((1440)/(dt/60),:));
 xlabel('Depth (m)')
 ylabel('Temperature (C)')
 
-% %% Input observations into heat transfer function to generate forward model
-% formod = @(theta) Heat_Transfer(theta(1),theta(2),theta(3),theta(4),theta(5),theta(6),density,dt,Air_Temp_C,R_Short_Net,R_Long_Upper,...
-%     WindSpeed_ms_30_smooth,T_Deep,StartTemp_1,T_Start,Layer_size_B,Dug_VWC_smooth,VWC_depth_indices,Humidity./100,emissivity,Timed_Albedo,Pressure_air.*100);%
-
 %% TEST model to make sure it's in the right ball park
 % Test_Result = formod(Vars_init(:));
 % if sum(isnan(Test_Result))>1 || ~isreal(Test_Result)
@@ -303,7 +299,7 @@ hold off
 xlabel('Time (hr)');
 ylabel('Surface Temperature (C)');
 legend([G,H,F,M(1),M(2)],'Interpreter','none')
-chi_v_test = sum((Temps_to_fit-Test_Result).^2./err.^2)/(length(Temps_to_fit)-length(Vars_init)); %reduced chi squared
+chi_v_test = sum((Temps_to_fit-Test_Result).^2./err.^2)/(length(Temps_to_fit)-nvars); %reduced chi squared
 ttl = sprintf('TI top = %0.2f Jm^{-2}K^{-1}s^{-1/2}, chi^{2} = %0.2f', sqrt(Vars_init(1)*Cp_Deep*density),chi_v_test);%Calculate TI from results
 title(ttl,'Interpreter','tex','FontName','Ariel')
 
@@ -311,7 +307,7 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
 %   Time data - struct of timeseries data variables 
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
-      TData.VWC_column=Dug_VWC;
+      TData.VWC_column=VWC_column;
       TData.err = err;
       TData.evap_depth=evap_depth;
       TData.humidity=Humidity;
