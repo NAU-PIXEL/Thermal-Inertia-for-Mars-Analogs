@@ -149,6 +149,7 @@ f_diff = p.f_diff;
 material = p.material;
 material_lower = p.material_lower;
 MappingMode = p.MappingMode;
+shadow_data = p.shadow_data;
 T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
 T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 e_fxn = p.e_fxn;
