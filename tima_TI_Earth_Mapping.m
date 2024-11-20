@@ -62,7 +62,7 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %       MData.UAV_flight_times: list of capture times of thermal mosaics of field region (datetime)
 %       MData.col_min: For reduced column range, minimum (vector)
 %       MData.col_max: For reduced column range, maximum (vector)      
-%       Mdata.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
+%       MData.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
 %       MData.nvars: Number of variables being fit for (vector)
 %       MData.lbound: List of lower limits on variables being fit for, in
 %           same order as MData.vars_init (vector, size MData.nvars)
@@ -116,7 +116,7 @@ p.addParameter('Mode','1layer',@ischar);%'2layer','2layer_fixed_depth','2layer_f
 p.parse(TData, MData, inDIR, outDIR, varargin{:});
 p=p.Results;
 if ~isfield(MData, 'parallel')
-    Mdata.parallel = false;
+    MData.parallel = false;
 end
 imptopts = detectImportOptions([inDIR,'Slope.csv']);
 imptopts.DataLines = [row row];
@@ -145,7 +145,15 @@ Data_UAV_X = NaN([size(Data_Albedo_X,2) size(UAV_flight_ind,2)]);
 for t = 1:size(UAV_flight_ind,2)
     Data_UAV_X(:,t) = readmatrix([inDIR,sprintf('TempC_%u.csv',t)],imptopts);
 end
-
+if strcmp(p.Mode,'1layer')
+        MData.minit = MData.minit(1,:);
+elseif strcmp(p.Mode,'2layer')
+        MData.minit = MData.minit([1 7:8],:);
+elseif strcmp(p.Mode,'2layer_fixed_depth')
+        MData.minit = MData.minit([1 8],:);
+elseif strcmp(p.Mode,'2layer_fixed_lower')
+        MData.minit = MData.minit([1 7],:);
+end
 poolobj = gcp('nocreate');
 delete(poolobj);
 parpool('Processes',10)
@@ -204,7 +212,7 @@ parfor col = MData.col_min:MData.col_max
         end
         Temps_Obs = Data_UAV_X(col,:);
         Temps_Obs = Temps_Obs(:);
-        opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Mdata.parallel,'MaxFunctionEvaluations',MData.nstep);
+        opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',MData.parallel,'MaxFunctionEvaluations',MData.nstep);
         Obj = @(theta) sum((Temps_Obs-tima_formod_subset(theta,UAV_flight_ind,formod)).^2./MData.erf(Temps_Obs).^2)/(length(Temps_Obs)-MData.nvars); %Reduced Chi_v         
         problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts,'PlotFcn',[]) ; 
         [RESULTS_holder,fval_holder] = surrogateopt(problem);
