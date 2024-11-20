@@ -1,6 +1,6 @@
 function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,VWC_depth_indices,RH,emissivity,...
+    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,RH,emissivity,...
     pressure_air_pa,varargin)
 %***************
 % TIMA_HEAT_TRANSFER
@@ -10,37 +10,37 @@ function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 % Syntax
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa)
 
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa,'material',material)
 
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa,'T_adj1',[index, T_K])
 
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa,k_dry_std_lower,depth_transition)
 
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa,k_dry_std_lower,depth_transition,'rho_dry_lower',rho_dry_lower)
 
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa,'albedo',albedo)
 
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,dug_VWC,evap_depth,RH,emissivity,...
+    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
     % pressure_air_pa,'slope_angle',slope_angle,'aspect_cwfromS','solar_azimuth_cwfromS',solar_azimuth_cwfromS,...
     % 'solar_zenith_apparent',solar_zenith_apparent,'f_diff',f_diff,'shadow_data',shadow_data,...
     % 'shadow_time_ind',shadow_time_ind,'MappingMode',true)
@@ -61,9 +61,8 @@ function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 %       R_Short_Lower: Must be positive
 %       R_Long_Upper
 %       WindSpeed_horiz
-%       Dug_VWC
+%       VWC_Column
 %       evap_depth
-%       VWC_depth_indices
 %       RH
 %       rho_dry
 %       emissivity
@@ -128,8 +127,9 @@ p.addParameter('e_fxn',[],@(x)isa(x,'cfit'));
 p.addParameter('shadow_data',[],@isnumeric);
 p.addParameter('shadow_time_ind',[],@isnumeric);
 p.addParameter('material',"basalt",@ischar);
+p.addParameter('material_lower',"basalt",@ischar);
 p.addParameter('MappingMode',false,@islogical);
-p.addParameter('T_adj1',[],@(x)isnumeric(x)&&length(x)==2);
+p.addParameter('T_adj1',[]);
 p.addParameter('T_adj2',[]);
 p.parse(r_short_lower, r_short_upper, varargin{:});
 
@@ -146,7 +146,9 @@ solar_azimuth_cwfromS = p.solar_azimuth_cwfromS;
 solar_zenith_apparent = p.solar_zenith_apparent;
 f_diff = p.f_diff;
 material = p.material;
+material_lower = p.material_lower;
 MappingMode = p.MappingMode;
+shadow_data = p.shadow_data;
 T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
 T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 e_fxn = p.e_fxn;
@@ -181,14 +183,14 @@ end
 
 for t = 2:length(air_temp_C)
     %*********LATENT HEAT & THERMAL CONDUCTIVITY***********
-    [q_evap_1,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,1),dug_VWC(t-1,1));
-    k(1) = tima_conductivity_model_lu2007(kay_upper,T(t-1,1),T_std,dug_VWC(t-1,1),theta_k,m,Soil_RH,material);%Top
-    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,NLAY),dug_VWC(t-1,end));
-    k(NLAY) = tima_conductivity_model_lu2007(kay_lower,T(t-1,NLAY),T_std,dug_VWC(t-1,end),theta_k,m,Soil_RH,material);%Top;%Bottom
+    [q_evap_1,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,1),VWC_column(t-1,1));
+    k(1) = tima_conductivity_model_lu2007(kay_upper,T(t-1,1),T_std,VWC_column(t-1,1),theta_k,m,Soil_RH,material);%Top
+    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,NLAY),VWC_column(t-1,end));
+    k(NLAY) = tima_conductivity_model_lu2007(kay_lower,T(t-1,NLAY),T_std,VWC_column(t-1,end),theta_k,m,Soil_RH,material_lower);%Top;%Bottom
     %****************************************
     
     %*********Specific heat***********
-    rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,1); %Dry density + water content
+    rho = rho_dry_upper + rho_H2O*VWC_column(t-1,1); %Dry density + water content
     Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,1),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
     %****************************************
 
@@ -228,8 +230,8 @@ for t = 2:length(air_temp_C)
     
     %*********Ground Flux***********
     %ref: Kieffer, 2013
-    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,2),dug_VWC(t-1,VWC_depth_indices(2)));
-    k(2) = tima_conductivity_model_lu2007(kay_lower,T(t-1,2),T_std,dug_VWC(t-1,VWC_depth_indices(2)),theta_k,m,Soil_RH,material);
+    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,2),VWC_column(t-1,2));
+    k(2) = tima_conductivity_model_lu2007(kay_lower,T(t-1,2),T_std,VWC_column(t-1,2),theta_k,m,Soil_RH,material);
     q_G = 2*(T(t-1,2)-T(t-1,1))/(layer_size(1)/k(1)+layer_size(2)/k(2)); %heat flux from conducting with lower layer
     %*******************************
 
@@ -239,12 +241,12 @@ for t = 2:length(air_temp_C)
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
     if ~isempty(T_adj1)
-        if dug_VWC(t,1) > 0.03 && (t == ceil(T_adj1(1)))
+        if VWC_column(t,1) > 0.03 && (t == ceil(T_adj1(1)))
             T(t,1) = T_adj1(2); %Value taken from T109 probe in watering can
         end
     end
     if ~isempty(T_adj2)
-        if dug_VWC(t,1) > 0.02 && (t == ceil(T_adj2(1)))
+        if VWC_column(t,1) > 0.02 && (t == ceil(T_adj2(1)))
             T(t,1) = T_adj2(2); %Value taken from T109 probe in watering can
         end
     end
@@ -252,32 +254,32 @@ for t = 2:length(air_temp_C)
     for z = 2:NLAY-1 %layer loop
         if z < D_z
             if sum(layer_size(1:z)) <= 0.075%evap_depth(t) %Wang 2016 inflection point
-                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
+                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
             else
-                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
+                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
                 q_evap_z = 0; %Evap_Coeff
             end
-            k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,dug_VWC(t-1,VWC_depth_indices(z)),theta_k,m,Soil_RH,material);
-            rho = rho_dry_upper + rho_H2O*dug_VWC(t-1,VWC_depth_indices(z)); %H2O dep
+            k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material);
+            rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
             Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
         else
-            if material == "ice"
-                k(z) = kay_lower;
+            if material_lower == "ice"
+                if T(t-1,z) > 273.15, T(t-1,z) = 273.15; end
                 rho = 1500; %kg/m^3
-                Cp = Cp_lower;%2000; %J/kgK
-                T(t-1,z) = T_Deep;
+                Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
                 q_evap_z = 0; %Evap_Coeff
                 Soil_RH = 1;
+                k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
             else
                 if sum(layer_size(1:z)) <= 0.075%evap_depth(t)
-                    [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
+                    [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
                 else
-                    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),dug_VWC(t-1,VWC_depth_indices(z)));
+                    [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
                     q_evap_z = 0; %Evap_Coeff
                 end
-                k(z) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,dug_VWC(t-1,VWC_depth_indices(z)),theta_k,m,Soil_RH,material);
-                rho = rho_dry_lower + rho_H2O*dug_VWC(t-1,VWC_depth_indices(z)); %H2O dep
-                Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
+                k(z:end) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material_lower);
+                rho = rho_dry_lower + rho_H2O*VWC_column(t-1,z); %H2O dep
+                Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
             end
         end
         %Subsurface Multip Factors (Kieffer, 2013)
@@ -291,12 +293,12 @@ for t = 2:length(air_temp_C)
         dT = F1*(T(t-1,z+1)+F2*T(t-1,z)+F3*T(t-1,z-1))+dt/(Cp*rho*layer_size(z))*q_evap_z;
         T(t,z) = T(t-1,z)+dT;
         if ~isempty(T_adj1)
-            if dug_VWC(t,VWC_depth_indices(z)) > 0.02 && (t == ceil(T_adj1(1)))
+            if VWC_column(t,z) > 0.02 && (t == ceil(T_adj1(1)))
                 T(t,z) = T_adj1(2); %Value taken from T109 probe in watering can
             end
         end
         if ~isempty(T_adj2)
-            if dug_VWC(t,VWC_depth_indices(z)) > 0.02 && (t == ceil(T_adj2(1)))
+            if VWC_column(t,z) > 0.02 && (t == ceil(T_adj2(1)))
                 T(t,z) = T_adj2(2); %Value taken from T109 probe in watering can
             end
         end
