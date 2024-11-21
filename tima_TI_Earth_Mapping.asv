@@ -13,59 +13,59 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %
 % Input Parameters
 %   TData: Time data - struct of timeseries data variables (all vectors)
-%       TData.air_Temp_C: [C] near surface air temperature, typically at 3 m height
-%       TData.r_short_upper: [W/m^2] Integrated shortwave radiation (305 to 2800 nm) incident on flat
+%       TData.air_Temp_C: [C] near surface air temperature, typically at 3 m AGL
+%       TData.DF: [decimal fraction] Fraction of  Global Horizontal Irradiance (GHI)
+%           or r_short_upper that is diffuse (see
+%           https://github.com/sandialabs/MATLAB_PV_LIB)
+%       TData.TIMESTAMP: datetime array associated with each table row
+%           spaced by Mdata.dt [s] (datetime)
+%       TData.humidity: [decimal fraction] array of near surface relative humidity values,
+%           typically at 3m AGL TData.r_long_upper: [W/m^2] Integrated longwave radiation (4.5 to 42 μm) incident on flat
 %           surface
+%       TData.pressure_air_Pa: [Pa] station pressure, typically at 3m AGL
 %       TData.r_short_lower: [W/m^2] Integrated upwelling shortwave radiation (305 to 2800 nm) from flat
 %           surface
-%       TData.r_long_upper: [W/m^2] Integrated longwave radiation (4.5 to 42 μm) incident on flat
+%       TData.r_short_upper: [W/m^2] Integrated shortwave radiation (305 to 2800 nm) incident on flat
 %           surface
-%       TData.windspeed_horiz_ms: [m/s] Near surface horizontal wind speed,
-%           typically at 3m height.
-%       TData.VWC_column: [% by volume] array of volumetric water content
+%       TData.solarazimuth_cwfromS: [degrees] Solar azimuth in degrees
+%           clockwise from South, typically -180:180 or 0:360
+%       TData.solarzenith_apparent: [degrees] Solar zenith in degrees,
+%           corrected for atmospheric refraction.
+%       TData.VWC_column: [decimal fraction by volume] array of volumetric water content
 %           for each model layer with each time step, typically
 %           interpolated.
-
-%       TData.DF:
-%       TData.dug_VWC_smooth: 
-%       TData.evap_depth 
-%       TData.humidity: as a fraction
-%       TData.pressure_air_Pa: 
-%       TData.r_long_upper:
-%       TData.r_short_upper: 
-%       TData.r_short_lower: 
-%       TData.solarazimuth_cwfromS:
-%       TData.solarzenith_apparent:
-%       TData.timed_albedo: 
-%       TData.TIMESTAMP: 
-%       TData.temps_to_fit: 
-%       TData.windspeed_horiz_ms: 
-%
+%       TData.windspeed_horiz_ms: [m/s] Near surface horizontal wind speed,
+%           typically at 3m AGL.
 %   
 %   MData: Model Data - Struct of static and model format variables
-%       MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
-%           Surf. ex. coef. (CH) [unitless], Surf. ex. coef. (CE) [unitless], Soil Moist. Infl. (thetak) [% by volume],...
-%           Soil Moist. Infl. (thetaE) [% by volume], (Transition Depth [m]), (k-lower [W/mK])]
-%           List of 6-8 inputs for variables to serve as either initial or fixed values. (vector)
+%       
+%       MData.col_min: For reduced column range, minimum (vector)
+%       MData.col_max: For reduced column range, maximum (vector)  
 %       MData.density: [kg/m^3] Value for density of soil beneath tower.  (vector)
 %       MData.dt: [s] Time step (vector)
-%       MData.T_std: [K] Standard temperature; typically 300 (vector)
+%       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
+%           range of sensor. (vector)
+%       MData.erf: Uncertainty as function of observed temperature (function_handle)
+%       MData.layer_size: [m] List of vertical thickness for each layer
+%           from top to bottom. (vector)
+%       MData.lbound: List of lower limits on variables being fit for, in
+%           same order as MData.vars_init (vector, size MData.nvars)
+%       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
+%       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
+%       MData.nvars: Number of variables being fit for (vector)
+%       MData.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
 %       MData.T_deep: [K] Lower boundary condition, fixed temperature (vector)
 %       MData.T_start: [K] Initial condition, list of center temperatures
 %           for each layer at start of simulation (vector)
-%       MData.layer_size: [m] List of vertical thickness for each layer
-%           from top to bottom. (vector)
-%       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
-%           range of sensor. (vector)
-%       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
-%       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
+%       MData.T_std: [K] Standard temperature; typically 300 (vector)
 %       MData.UAV_flight_times: list of capture times of thermal mosaics of field region (datetime)
-%       MData.col_min: For reduced column range, minimum (vector)
-%       MData.col_max: For reduced column range, maximum (vector)      
-%       Mdata.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
-%       MData.nvars: Number of variables being fit for (vector)
-%       MData.lbound: List of lower limits on variables being fit for, in
-%           same order as MData.vars_init (vector, size MData.nvars)
+
+
+
+    
+
+
+
 %       MData.ubound: List of upper limits on variables being fit for, in
 %           same order as MData.vars_init (vector, size MData.nvars)
 %       MData.notes: Details to record in data structure (string)
@@ -74,14 +74,16 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %           vector is nvarx50 (vector)
 %       MData.nstep: Number of iterations for curve fitting, 250 is good
 %           (vector)
-%       MData.erf: Uncertainty as function of observed temperature (function_handle)
-
+%       MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
+%           Surf. ex. coef. (CH) [unitless], Surf. ex. coef. (CE) [unitless], Soil Moist. Infl. (thetak) [% by volume],...
+%           Soil Moist. Infl. (thetaE) [% by volume], (Transition Depth [m]), (k-lower [W/mK])]
+%           List of 6-8 inputs for variables to serve as either initial or fixed values. (vector)
 %
 %   inDIR: Full path to directory of inputs (string), must contain
 %       Slope.csv [values in degrees]
 %       Aspect_cwfromS.csv [values in degrees]
 %       Albedo.csv [values 0-1]
-%       Fore each thermal map: TempC_#.csv [values in degrees C, where # is the map identified in
+%       For each thermal map: TempC_#.csv [values in degrees C, where # is the map identified in
 %           chronological order]
 %       Shadows: A subdirectory containing modeled shadows throughout the
 %           day in format 'Shadow_yyyyMMdd_HHmmss.csv' [values 0-1, with 0 being full shadow]
@@ -116,7 +118,7 @@ p.addParameter('Mode','1layer',@ischar);%'2layer','2layer_fixed_depth','2layer_f
 p.parse(TData, MData, inDIR, outDIR, varargin{:});
 p=p.Results;
 if ~isfield(MData, 'parallel')
-    Mdata.parallel = false;
+    MData.parallel = false;
 end
 imptopts = detectImportOptions([inDIR,'Slope.csv']);
 imptopts.DataLines = [row row];
@@ -145,35 +147,15 @@ Data_UAV_X = NaN([size(Data_Albedo_X,2) size(UAV_flight_ind,2)]);
 for t = 1:size(UAV_flight_ind,2)
     Data_UAV_X(:,t) = readmatrix([inDIR,sprintf('TempC_%u.csv',t)],imptopts);
 end
-        if strcmp(p.Mode,'1layer')
-            formod = @(theta) tima_heat_transfer(theta(1),MData.vars_init(2),MData.vars_init(3),...
-                MData.vars_init(4),MData.vars_init(5),MData.vars_init(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-                TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-                TData.VWC_column,TData.humidity,MData.emissivity,...
-                TData.pressure_air_Pa,'albedo',Data_Albedo_X(col),'slope_angle',Data_Slope_X(col),...
-                'aspect_cwfromS',Data_Aspect_X(col),'solar_azimuth_cwfromS',...
-                TData.solarazimuth_cwfromS,'solar_zenith_apparent',TData.solarzenith_apparent,...
-                'f_diff',TData.DF,'shadow_data',single(Data_Shadows_X(col,:)),...
-                'shadow_time_ind',shadow_time_ind,'MappingMode',true,'material',MData.material);
-                MData.minit = MData.minit(1,:);
-        elseif strcmp(p.Mode,'2layer')
-            formod = @(theta) tima_heat_transfer(theta(1),MData.vars_init(2),MData.vars_init(3),...
-                MData.vars_init(4),MData.vars_init(5),MData.vars_init(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-                TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-                TData.VWC_column,TData.humidity,MData.emissivity,...
-                TData.pressure_air_Pa,'albedo',Data_Albedo_X(col),...
-                'slope_angle',Data_Slope_X(col),'aspect_cwfromS',Data_Aspect_X(col),'solar_azimuth_cwfromS',...
-                TData.solarazimuth_cwfromS,'solar_zenith_apparent',TData.solarzenith_apparent,...
-                'f_diff',TData.DF,'shadow_data',single(Data_Shadows_X(col,:)),...
-                'shadow_time_ind',shadow_time_ind,'MappingMode',true,'material',MData.material,'depth_transition',...
-                 theta(2),'k_dry_std_lower',theta(3),'material_lower',MData.material_lower);
-                MData.minit = MData.minit([1 7:8],:);
-        elseif strcmp(p.Mode,'2layer_fixed_depth')
-
-                MData.minit = MData.minit([1 8],:);
-        elseif strcmp(p.Mode,'2layer_fixed_lower')
-                MData.minit = MData.minit([1 7],:);
-        end
+if strcmp(p.Mode,'1layer')
+        MData.minit = MData.minit(1,:);
+elseif strcmp(p.Mode,'2layer')
+        MData.minit = MData.minit([1 7:8],:);
+elseif strcmp(p.Mode,'2layer_fixed_depth')
+        MData.minit = MData.minit([1 8],:);
+elseif strcmp(p.Mode,'2layer_fixed_lower')
+        MData.minit = MData.minit([1 7],:);
+end
 poolobj = gcp('nocreate');
 delete(poolobj);
 parpool('Processes',10)
@@ -196,7 +178,6 @@ parfor col = MData.col_min:MData.col_max
                 TData.solarazimuth_cwfromS,'solar_zenith_apparent',TData.solarzenith_apparent,...
                 'f_diff',TData.DF,'shadow_data',single(Data_Shadows_X(col,:)),...
                 'shadow_time_ind',shadow_time_ind,'MappingMode',true,'material',MData.material);
-                MData.minit = MData.minit(1,:);
         elseif strcmp(p.Mode,'2layer')
             formod = @(theta) tima_heat_transfer(theta(1),MData.vars_init(2),MData.vars_init(3),...
                 MData.vars_init(4),MData.vars_init(5),MData.vars_init(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -208,7 +189,6 @@ parfor col = MData.col_min:MData.col_max
                 'f_diff',TData.DF,'shadow_data',single(Data_Shadows_X(col,:)),...
                 'shadow_time_ind',shadow_time_ind,'MappingMode',true,'material',MData.material,'depth_transition',...
                  theta(2),'k_dry_std_lower',theta(3),'material_lower',MData.material_lower);
-                MData.minit = MData.minit([1 7:8],:);
         elseif strcmp(p.Mode,'2layer_fixed_depth')
             formod = @(theta) tima_heat_transfer(theta(1),MData.vars_init(2),MData.vars_init(3),...
                 MData.vars_init(4),MData.vars_init(5),MData.vars_init(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -220,7 +200,6 @@ parfor col = MData.col_min:MData.col_max
                 'f_diff',TData.DF,'shadow_data',single(Data_Shadows_X(col,:)),...
                 'shadow_time_ind',shadow_time_ind,'MappingMode',true,'material',MData.material,'depth_transition',...
                  MData.vars_init(7),'k_dry_std_lower',theta(2),'material_lower',MData.material_lower);
-                MData.minit = MData.minit([1 8],:);
         elseif strcmp(p.Mode,'2layer_fixed_lower')
             formod = @(theta) tima_heat_transfer(theta(1),MData.vars_init(2),MData.vars_init(3),...
                 MData.vars_init(4),MData.vars_init(5),MData.vars_init(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -232,11 +211,10 @@ parfor col = MData.col_min:MData.col_max
                 'f_diff',TData.DF,'shadow_data',single(Data_Shadows_X(col,:)),...
                 'shadow_time_ind',shadow_time_ind,'MappingMode',true,'material',MData.material,...
                 'depth_transition',theta(2),'k_dry_std_lower',vars_init(8),'material_lower',MData.material_lower);
-                MData.minit = MData.minit([1 7],:);
         end
         Temps_Obs = Data_UAV_X(col,:);
         Temps_Obs = Temps_Obs(:);
-        opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Mdata.parallel,'MaxFunctionEvaluations',MData.nstep);
+        opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',MData.parallel,'MaxFunctionEvaluations',MData.nstep);
         Obj = @(theta) sum((Temps_Obs-tima_formod_subset(theta,UAV_flight_ind,formod)).^2./MData.erf(Temps_Obs).^2)/(length(Temps_Obs)-MData.nvars); %Reduced Chi_v         
         problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts,'PlotFcn',[]) ; 
         [RESULTS_holder,fval_holder] = surrogateopt(problem);

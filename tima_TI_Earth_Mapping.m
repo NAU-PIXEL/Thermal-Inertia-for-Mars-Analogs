@@ -13,84 +13,81 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %
 % Input Parameters
 %   TData: Time data - struct of timeseries data variables (all vectors)
-%       TData.air_Temp_C: [C] near surface air temperature, typically at 3 m height
-%       TData.r_short_upper: [W/m^2] Integrated shortwave radiation (305 to 2800 nm) incident on flat
+%       TData.air_Temp_C: [C] near surface air temperature, typically at 3 m AGL
+%       TData.DF: [decimal fraction] Fraction of  Global Horizontal Irradiance (GHI)
+%           or r_short_upper that is diffuse (see
+%           https://github.com/sandialabs/MATLAB_PV_LIB)
+%       TData.TIMESTAMP: datetime array associated with each table row
+%           spaced by Mdata.dt [s] (datetime)
+%       TData.humidity: [decimal fraction] array of near surface relative humidity values,
+%           typically at 3m AGL TData.r_long_upper: [W/m^2] Integrated longwave radiation (4.5 to 42 μm) incident on flat
 %           surface
+%       TData.pressure_air_Pa: [Pa] station pressure, typically at 3m AGL
 %       TData.r_short_lower: [W/m^2] Integrated upwelling shortwave radiation (305 to 2800 nm) from flat
 %           surface
-%       TData.r_long_upper: [W/m^2] Integrated longwave radiation (4.5 to 42 μm) incident on flat
+%       TData.r_short_upper: [W/m^2] Integrated shortwave radiation (305 to 2800 nm) incident on flat
 %           surface
-%       TData.windspeed_horiz_ms: [m/s] Near surface horizontal wind speed,
-%           typically at 3m height.
-%       TData.VWC_column: [% by volume] array of volumetric water content
+%       TData.solarazimuth_cwfromS: [degrees] Solar azimuth in degrees
+%           clockwise from South, typically -180:180 or 0:360
+%       TData.solarzenith_apparent: [degrees] Solar zenith in degrees,
+%           corrected for atmospheric refraction.
+%       TData.VWC_column: [decimal fraction by volume] array of volumetric water content
 %           for each model layer with each time step, typically
 %           interpolated.
-
-%       TData.DF:
-%       TData.dug_VWC_smooth: 
-%       TData.evap_depth 
-%       TData.humidity: as a fraction
-%       TData.pressure_air_Pa: 
-%       TData.r_long_upper:
-%       TData.r_short_upper: 
-%       TData.r_short_lower: 
-%       TData.solarazimuth_cwfromS:
-%       TData.solarzenith_apparent:
-%       TData.timed_albedo: 
-%       TData.TIMESTAMP: 
-%       TData.temps_to_fit: 
-%       TData.windspeed_horiz_ms: 
-%
+%       TData.windspeed_horiz_ms: [m/s] Near surface horizontal wind speed,
+%           typically at 3m AGL.
 %   
 %   MData: Model Data - Struct of static and model format variables
+%       MData.col_min: For reduced column range, minimum (vector)
+%       MData.col_max: For reduced column range, maximum (vector)  
+%       MData.density: [kg/m^3] Value for density of soil beneath tower.  (vector)
+%       MData.dt: [s] Time step (vector)
+%       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
+%           range of sensor. (vector)
+%       MData.erf: Uncertainty as function of observed temperature (function_handle)
+%       MData.layer_size: [m] List of vertical thickness for each layer
+%           from top to bottom. (vector)
+%       MData.lbound: List of lower limits on variables being fit for, in
+%           same order as MData.vars_init (vector, size MData.nvars)
+%       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
+%       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
+%       MData.minit: Vector of initialized test variables with as many
+%           randomized samples as desired for fitting, 50 is good such that
+%           vector is nvarx50 (vector)
+%       MData.notes: Details to record in data structure (string)
+%       MData.nstep: Number of iterations for curve fitting, 250 is good
+%           (vector)
+%       MData.nvars: Number of variables being fit for (vector)
+%       MData.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
+%       MData.T_deep: [K] Lower boundary condition, fixed temperature (vector)
+%       MData.T_start: [K] Initial condition, list of center temperatures
+%           for each layer at start of simulation (vector)
+%       MData.T_std: [K] Standard temperature; typically 300 (vector)
+%       MData.UAV_flight_times: list of capture times of thermal mosaics of field region (datetime)
+%       MData.ubound: List of upper limits on variables being fit for, in
+%           same order as MData.vars_init (vector, size MData.nvars)
 %       MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
 %           Surf. ex. coef. (CH) [unitless], Surf. ex. coef. (CE) [unitless], Soil Moist. Infl. (thetak) [% by volume],...
 %           Soil Moist. Infl. (thetaE) [% by volume], (Transition Depth [m]), (k-lower [W/mK])]
 %           List of 6-8 inputs for variables to serve as either initial or fixed values. (vector)
-%       MData.density: [kg/m^3] Value for density of soil beneath tower.  (vector)
-%       MData.dt: [s] Time step (vector)
-%       MData.T_std: [K] Standard temperature; typically 300 (vector)
-%       MData.T_deep: [K] Lower boundary condition, fixed temperature (vector)
-%       MData.T_start: [K] Initial condition, list of center temperatures
-%           for each layer at start of simulation (vector)
-%       MData.layer_size: [m] List of vertical thickness for each layer
-%           from top to bottom. (vector)
-%       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
-%           range of sensor. (vector)
-%       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
-%       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
-%       MData.UAV_flight_times: list of capture times of thermal mosaics of field region (datetime)
-%       MData.col_min: For reduced column range, minimum (vector)
-%       MData.col_max: For reduced column range, maximum (vector)      
-%       MData.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
-%       MData.nvars: Number of variables being fit for (vector)
-%       MData.lbound: List of lower limits on variables being fit for, in
-%           same order as MData.vars_init (vector, size MData.nvars)
-%       MData.ubound: List of upper limits on variables being fit for, in
-%           same order as MData.vars_init (vector, size MData.nvars)
-%       MData.notes: Details to record in data structure (string)
-%       MData.minit: Vector of initialized test variables with as many
-%           randomized samples as desired for fitting, 50 is good such that
-%           vector is nvarx50 (vector)
-%       MData.nstep: Number of iterations for curve fitting, 250 is good
-%           (vector)
-%       MData.erf: Uncertainty as function of observed temperature (function_handle)
-
 %
 %   inDIR: Full path to directory of inputs (string), must contain
-%       Slope.csv [values in degrees]
-%       Aspect_cwfromS.csv [values in degrees]
 %       Albedo.csv [values 0-1]
-%       Fore each thermal map: TempC_#.csv [values in degrees C, where # is the map identified in
-%           chronological order]
+%       Aspect_cwfromS.csv [values in degrees]
+%       Slope.csv [values in degrees]
 %       Shadows: A subdirectory containing modeled shadows throughout the
 %           day in format 'Shadow_yyyyMMdd_HHmmss.csv' [values 0-1, with 0 being full shadow]
+%       For each thermal map: TempC_#.csv [values in degrees C, where # is the map identified in
+%           chronological order]
+%
 %   out_DIR: Full path to directory for outputs (string)
-
+%
 % Outputs:
-%   TK_Line_%u.txt
-%   Depth_Line_%u.txt
-%   fval_Line_%u.txt
+%   TK_Line_#.txt: [W/mK] Text file containing derived bulk dry thermal
+%       conductivity values for row #.
+%   Depth_Line_#.txt: [m] Text file containing derived depth to lower layer for row #.
+%   fval_Line_#.txt: [chi_v^2] Text file containing derived goodness of fit
+%       values for row #.
 %
 % Author
 %    Ari Koeppel -- Copyright 2023
@@ -104,7 +101,8 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %   Thermal conductivity mixing:
 %   
 % See also 
-%   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
+%   time_heat_transfer.m tima_initialize.m tima_ln_prior.m
+%   tima_mapping_recombine_rows.m
 
 format shortG
 p = inputParser;

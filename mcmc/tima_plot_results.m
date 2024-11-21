@@ -136,8 +136,11 @@ title('Sensible')
 figure
 hold on
 ylabel('W/mK');
-plot(TData.TIMESTAMP,Result_keff(:,1),'r', 'LineWidth', 1 ,'DisplayName','k_eff');
+L(1) = plot(TData.TIMESTAMP,Result_keff(:,1),'r.', 'LineWidth', 1 ,'DisplayName','k_eff (layer 1)');
+L(2) = plot(TData.TIMESTAMP,Result_keff(:,2),'r', 'LineWidth', 1 ,'DisplayName','k_eff (layer 2)');
+L(3) = plot(TData.TIMESTAMP,Result_keff(:,end-1),'r--', 'LineWidth', 1 ,'DisplayName','k_eff (layer end-1)');
 hold off
+legend(L)
 title('K_eff')
 
 figure
