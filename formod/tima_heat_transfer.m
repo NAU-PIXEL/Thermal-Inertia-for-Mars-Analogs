@@ -2,59 +2,44 @@ function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,RH,emissivity,...
     pressure_air_pa,varargin)
-%***************
-% TIMA_HEAT_TRANSFER
+%% TIMA_HEAT_TRANSFER
 %   This function uses observational data and assigned thermophysical properties 
 %   to estimate the emitting surface temperature through time.
 
 % Syntax
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa)
-
+%     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
+%     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,RH,emissivity,...
+%     pressure_air_pa)
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa,'material',material)
-
+%     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
+%     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,RH,emissivity,...
+%     pressure_air_pa,varargin)
 %   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa,'T_adj1',[index, T_K])
+%     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
+%     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,RH,emissivity,...
+%     pressure_air_pa,'material',material)
 
-%   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa,k_dry_std_lower,depth_transition)
-
-%   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa,k_dry_std_lower,depth_transition,'rho_dry_lower',rho_dry_lower)
-
-%   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa,'albedo',albedo)
-
-%   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    % rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    % windspeed_horiz,T_deep,initial_temps,layer_size,VWC_Column,evap_depth,RH,emissivity,...
-    % pressure_air_pa,'slope_angle',slope_angle,'aspect_cwfromS','solar_azimuth_cwfromS',solar_azimuth_cwfromS,...
-    % 'solar_zenith_apparent',solar_zenith_apparent,'f_diff',f_diff,'shadow_data',shadow_data,...
-    % 'shadow_time_ind',shadow_time_ind,'MappingMode',true)
-
-% Description
-%   This model uses a surrogate optimization solver with 1-7 paramters to fit IR-image-observed
-%   surface temperatures using meteorological data and surface parameters derived from
-%   aerial/satellite imagery. Fitting Parameters can include any or all of: top layer thermal
-%   conductivity at 300K, bottome layer thermal conductivity at 300K, Depth of thermal conductivity
-%   transition, pore-network-connectivity, Surf. ex. coef. (sensible), Surf. ex. coef. (latent), Soil Moist. Inflection (conductivity) (%), Soil Moist. Infl. (latent heat) (%)
-
+% varargin options
+%     p.addOptional('k_dry_std_lower',k_dry_std_upper,@isnumeric);
+%     p.addOptional('depth_transition',sum(layer_size),@isnumeric);
+%     p.addParameter('rho_dry_lower',rho_dry_upper,@(x)isnumeric(x)&&isscalar(x));
+%     p.addParameter('albedo',[],@isnumeric);
+%     p.addParameter('slope_angle',0,@(x)isnumeric(x)&&isscalar(x));
+%     p.addParameter('aspect_cwfromS',[],@(x)isnumeric(x)&&isscalar(x));
+%     p.addParameter('solar_azimuth_cwfromS',[],@(x)isnumeric(x)&&isvector(x));
+%     p.addParameter('solar_zenith_apparent',[],@(x)isnumeric(x)&&isvector(x));
+%     p.addParameter('f_diff',[],@(x)isnumeric(x)&&isvector(x));
+%     p.addParameter('e_fxn',[],@(x)isa(x,'cfit'));
+%     p.addParameter('shadow_data',[],@isnumeric);
+%     p.addParameter('shadow_time_ind',[],@isnumeric);
+%     p.addParameter('material',"basalt",@ischar);
+%     p.addParameter('material_lower',"basalt",@ischar);
+%     p.addParameter('MappingMode',false,@islogical);
+%     p.addParameter('T_adj1',[]);
+%     p.addParameter('T_adj2',[]);
+%
 % Input Parameters
-%   Mapping Mode: True or False
-%   Observational data
 %       dt
 %       Air_Temp_C
 %       R_Short_Upper: must be positive
@@ -87,27 +72,22 @@ function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 %       Evap_Coeff
 %       theta_k
 %       theta_E
-
-%   OPTIONAL
-%       T_adj1: [index, T_K] pair used to adjust temperature during wetting
-%       T_adj2: [index, T_K] pair used to adjust temperature during wetting
-
-% Outputs:
+%
+% Output Parameters:
 %   T_Surf_C = Surface temperature time series (deg C)
 %
 % Author
 %    Ari Koeppel -- Copyright 2023
 %
 % Sources
-%   Optimization tool: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
 %   Subsurface heat flux: Kieffer et al., 2013
 %   Irradiance Calculation: https://github.com/sandialabs/MATLAB_PV_LIB
-%   Sensible heat flux:
+%   Sensible heat flux: Cellier 1996
 %   Latent heat flux: Daamen and Simmonds 1996 + Mahfouf and Noilhan (1991)+ Kondo1990
-%   Thermal conductivity mixing:
+%   Thermal conductivity mixing: Zhang and Wang 2017, Dong 2015
 %   
 % See also 
-%   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
+%   
 % ***************
 p = inputParser;
 p.addRequired('r_short_lower',@(x)all(x>=0) && isnumeric(x));
@@ -132,12 +112,10 @@ p.addParameter('MappingMode',false,@islogical);
 p.addParameter('T_adj1',[]);
 p.addParameter('T_adj2',[]);
 p.parse(r_short_lower, r_short_upper, varargin{:});
-
 p=p.Results;
 
 k_dry_std_lower = p.k_dry_std_lower;
 depth_transition = p.depth_transition;
-
 rho_dry_lower = p.rho_dry_lower;
 albedo = p.albedo;
 slope_angle = p.slope_angle;

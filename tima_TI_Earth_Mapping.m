@@ -1,15 +1,32 @@
 function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
-%% TIMA_TI_EARTH_MAPPING_GENERAL (TI Mars Analogs)
+%% TIMA_TI_EARTH_MAPPING (Thermal Inertia for Mars Analogs)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
 %   observations taken in the field to fit 1D multi-parameter model to each pixel. Justification for
 %   approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
 %
 % Description
-%   This model uses a surrogate optimization solver with 1-7 paramters to fit IR-image-observed
+%   This model uses a surrogate optimization solver with 1-3 paramters to fit IR-image-observed
 %   surface temperatures using meteorological data and surface parameters derived from
-%   aerial/satellite imagery. Fitting Parameters can include any or all of: top layer thermal
-%   conductivity at 300K, bottome layer thermal conductivity at 300K, Depth of thermal conductivity
-%   transition, pore-network-connectivity, Surf. ex. coef. (sensible), Surf. ex. coef. (latent), Soil Moist. Inflection (conductivity) (%), Soil Moist. Infl. (latent heat) (%)
+%   aerial/satellite imagery. Fitting Parameters can include any or all of: top layer bulk dry thermal
+%   conductivity, Depth of thermal conductivity
+%   transition, bottom layer bulk dry thermal conductivity. The tool is
+%   optimized for raster files to run one row at a time (or in parallel per compute node)
+%   and then run columns in parallel on the same node.
+%
+% Syntax
+%   tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row)
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,inDIR,outDIR,row,varargin)
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,inDIR,outDIR,row,'Mode','2layer')
+%
+% varargin options:
+%   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
+%       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
+%       layer and the transition depth) (default='1layer') (string)
+%   'Parallel': Run surrogate optimizer in parallel. (default=false)
+%       (logical) NOTE: The script is already double parallelized for
+%       raster analysis (row and column). This parameter is an additional
+%       option for a third level of parallelization, which could cause
+%       issues.
 %
 % Input Parameters
 %   TData: Time data - struct of timeseries data variables (all vectors)
@@ -58,7 +75,6 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %       MData.nstep: Number of iterations for curve fitting, 250 is good
 %           (vector)
 %       MData.nvars: Number of variables being fit for (vector)
-%       MData.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
 %       MData.T_deep: [K] Lower boundary condition, fixed temperature (vector)
 %       MData.T_start: [K] Initial condition, list of center temperatures
 %           for each layer at start of simulation (vector)
@@ -80,7 +96,9 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %       For each thermal map: TempC_#.csv [values in degrees C, where # is the map identified in
 %           chronological order]
 %
-%   out_DIR: Full path to directory for outputs (string)
+%   outDIR: Full path to directory for outputs (string)
+%
+%   row: row number of raster to run fitting on (vector)
 %
 % Outputs:
 %   TK_Line_#.txt: [W/mK] Text file containing derived bulk dry thermal
@@ -88,6 +106,7 @@ function [] = tima_TI_Earth_Mapping(TData,MData,inDIR,outDIR,row,varargin)
 %   Depth_Line_#.txt: [m] Text file containing derived depth to lower layer for row #.
 %   fval_Line_#.txt: [chi_v^2] Text file containing derived goodness of fit
 %       values for row #.
+%   **Row files can be recombined with tima_mapping_recombine_rows.m**
 %
 % Author
 %    Ari Koeppel -- Copyright 2023
@@ -111,11 +130,10 @@ p.addRequired('MData',@isstruct);
 p.addRequired('inDIR',@ischar);
 p.addRequired('outDIR',@ischar);
 p.addParameter('Mode','1layer',@ischar);%'2layer','2layer_fixed_depth','2layer_fixed_lower'
+p.addParameter('Parallel',false,@islogical);
 p.parse(TData, MData, inDIR, outDIR, varargin{:});
 p=p.Results;
-if ~isfield(MData, 'parallel')
-    MData.parallel = false;
-end
+
 imptopts = detectImportOptions([inDIR,'Slope.csv']);
 imptopts.DataLines = [row row];
 Data_Slope_X = readmatrix([inDIR,'Slope.csv'],imptopts);
@@ -210,7 +228,7 @@ parfor col = MData.col_min:MData.col_max
         end
         Temps_Obs = Data_UAV_X(col,:);
         Temps_Obs = Temps_Obs(:);
-        opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',MData.parallel,'MaxFunctionEvaluations',MData.nstep);
+        opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',p.Parallel,'MaxFunctionEvaluations',MData.nstep);
         Obj = @(theta) sum((Temps_Obs-tima_formod_subset(theta,UAV_flight_ind,formod)).^2./MData.erf(Temps_Obs).^2)/(length(Temps_Obs)-MData.nvars); %Reduced Chi_v         
         problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts,'PlotFcn',[]) ; 
         [RESULTS_holder,fval_holder] = surrogateopt(problem);

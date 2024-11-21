@@ -4,7 +4,7 @@ function [temperature_column_K] = tima_initialize_skin(k_dry_std,rho_dry,m,theta
 %   Simple version of Heat tansfer model used to estimate a realistic subsurface 
 %   temperatures at start of model. The skin approach ultimately solves the
 %   upper boundary condition and balances energy fluxes at each time step
-%   by adjusting the skin temperature to control upwelling radiative flux.
+%   by adjusting the skin temperature to control upwelling radiatin
 %
 % Syntax
 %   [temperature_column_C] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS)

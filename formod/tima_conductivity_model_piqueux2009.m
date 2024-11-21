@@ -1,5 +1,5 @@
 function [k_eff] = tima_conductivity_model_piqueux2009(k_dry_std,Soil_Temperature,T_std,VWC,theta_k,m,Soil_RH,material)
-% TIMA_CONDUCTIVITY_MODEL_piqueux2009
+%% TIMA_CONDUCTIVITY_MODEL_piqueux2009
 %   function to calculate the effective thermal conductivity of a particulate soil or sediment using the piqueux 2009 Method
 %
 % Description
@@ -53,22 +53,22 @@ end
  k_dry = k_dry_avg*k_dry_mod/k_dry_mod_avg; % Since Piquex 2009a Fig 8 was modeled for a specific material type, k_dry_mod does not encessarily apply here, but the ratio of k_dry_mod/k_dry_mod_avg should be similar.
 %     k_dry = k_dry_avg+3.66*(k_air-k_air_avg);
 
-if material == 'basalt'
+if strcmp(material,'basalt')
     k_solid = 1.18 + 474/(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
 % Roughly = 2.2, Bristow, 2002
-elseif material == 'amorphous'
+elseif strcmp(material,'amorphous')
     k_solid = 0.6924 + 0.0015*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'granite'
+elseif strcmp(material,'granite')
     k_solid = 2.0;
     % Roughly = 2.0 (granite), Bristow, 2002
-elseif material == 'quartz'
+elseif strcmp(material,'quartz')
     k_solid = 7.69; %(horai 1971)
-elseif material == 'clay'
+elseif strcmp(material,'clay')
     k_solid = 2.9;
     % Roughly = 2.9 (clay), Bristow, 2002
-elseif material == 'salt'
+elseif strcmp(material,'salt')
     k_solid = -2.11 + 2960/(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'ice'
+elseif strcmp(material,'ice')
     k_solid = 2.18;
     % Roughly = 2.18, Bristow, 2002
 else

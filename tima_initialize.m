@@ -1,12 +1,11 @@
 function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS,material)
-%***************
-% TIMA_INITIALIZE
+%% TIMA_INITIALIZE
 %   Simple version of Heat tansfer model used to estimate a realistic subsurface 
 %   temperatures at start of model
-
+%
 % Syntax
 %   [temperature_column_C] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS)
-
+%
 % Description
 %   Script uses the measured surface temperature for 1 day on repeat as the forcing and then distrubutes heat
 %   This function uses observational data and assigned thermophysical properties 
@@ -35,8 +34,8 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
 %    Ari Koeppel -- Copyright 2023
 %   
 % See also 
-%   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity.
-%   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
+%   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity. 
+%   tima_conductivity_model_lu2007.m tima_specific_heat_model_hillel.m
     % ***************    
     
     % ***************

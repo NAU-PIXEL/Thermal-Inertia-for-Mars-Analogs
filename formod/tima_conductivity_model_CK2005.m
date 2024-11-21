@@ -1,5 +1,5 @@
 function [k_eff] = tima_conductivity_model_CK2005(k_dry_std,Soil_Temperature,T_std,VWC,theta_k,m,Soil_RH,material)
-% TIMA_CONDUCTIVITY_MODEL_CK2005
+%% TIMA_CONDUCTIVITY_MODEL_CK2005
 %   function to calculate the effective thermal conductivity of a particulate soil or sediment using the Cote & Konrad 2005 Method
 %
 % Description
@@ -56,24 +56,24 @@ k_H2O = -1.1e-5.*(Soil_Temperature - 273.15).^2 + 0.00234.*(Soil_Temperature - 2
 
 
 % k-bulk-dry from theory
-if material == 'basalt'
+if strcmp(material,'basalt')
     k_dry_mod = 2*k_air.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8
     k_dry_mod_avg = 2*k_air_avg.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 R > 0.98 within range 0.01-0.035
     k_solid = 1.18 + 474/(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
 % Roughly = 2.2, Bristow, 2002
-elseif material == 'amorphous'
+elseif strcmp(material,'amorphous')
     k_solid = 0.6924 + 0.0015*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'granite'
+elseif strcmp(material,'granite')
     k_solid = 2.0;
     % Roughly = 2.0 (granite), Bristow, 2002
-elseif material == 'quartz'
+elseif strcmp(material,'quartz')
     k_solid = 7.69; %(horai 1971)
-elseif material == 'clay'
+elseif strcmp(material,'clay')
     k_solid = 2.9;
     % Roughly = 2.9 (clay), Bristow, 2002
-elseif material == 'salt'
+elseif strcmp(material,'salt')
     k_solid = -2.11 + 2960/(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'ice'
+elseif strcmp(material,'ice')
     k_solid = 2.18;
     % Roughly = 2.18, Bristow, 2002
 else

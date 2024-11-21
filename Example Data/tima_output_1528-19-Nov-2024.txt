@@ -1,0 +1,24 @@
+1D thermal model results considering one location (note: EE2022_2024VWColumn).
+Datetime: 1528-19-Nov-2024 Runtime: 1396.3 s
+Time step (s): 60
+Nsteps: 1000
+Nwalkers: 50
+# of Layers: 10, Top Layer Size (m):  0.0150
+Initial Inputs:
+k-dry-300-upper (W/mK) = 1.6400
+Pore network con. par. (mk) = 1.1500
+Surf. ex. coef. (CH) = 246.8135
+Surf. ex. coef. (CE) = 208.2521
+Soil Moist. Infl. (thetak) (%) = 0.7369
+Soil Moist. Infl. (thetaE) (%) = 0.1871
+Depth Tansition (m) = 0.4000
+Reduced Chi Squared: 2.05
+RESULTS [16th pctl, 50th pctl, 84th pctl]:
+k-dry-300-upper (W/mK) = 1.4336, 1.6047, 3.2242
+Pore network con. par. (mk) = 0.6664, 0.9608, 1.0406
+Surf. ex. coef. (CH) = 337.6474, 350.1897, 356.9175
+Surf. ex. coef. (CE) = 277.6477, 380.4378, 562.2910
+Soil Moist. Infl. (thetak) (%) = 0.5822, 0.8108, 0.8908
+Soil Moist. Infl. (thetaE) (%) = 0.1067, 0.2172, 0.3472
+Depth Tansition (m) = 0.3261, 0.4127, 0.5490
+TI = 1423.0610, 1505.5979, 2134.1577

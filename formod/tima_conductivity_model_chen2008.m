@@ -1,9 +1,9 @@
 function [k_eff] = tima_conductivity_model_chen2008(VWC,theta_k,m)
-% TIMA_CONDUCTIVITY_MODEL_chen2008
+%% TIMA_CONDUCTIVITY_MODEL_chen2008
 %   function to calculate the effective thermal conductivity of a particulate soil or sediment using the Chen 2008 Method
 %
 % Description
-%   0<m<1  Don't use this
+%   0<m<1
 %
 % Syntax
 %   [k_eff] = tima_conductivity_model_chen2008(k_dry_std,Soil_Temperature,T_std,VWC,k_H2O,theta_k,m,Soil_RH,material)

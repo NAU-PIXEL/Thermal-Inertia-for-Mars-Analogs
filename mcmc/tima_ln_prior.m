@@ -5,21 +5,24 @@ function [logp] = tima_ln_prior(FitParams,varargin)
 %
 % SYNTAX
 %   [logp] = tima_ln_prior(FitParams)
-%   [logp] = tima_ln_prior(FitParams,k_upper_min,k_upper_max,k_lower_min,k_lower_max,depth_min,depth_max,m_min,m_max,CH_min,CH_max,CE_min,CE_max,theta_k_min,theta_k_max,theta_E_min,theta_E_max)
-% 
-% INPUTS
-%   FitParams: parameters for fitting
-%   min and max for
-%   k (upper and lower) = thermal conductivity (W/mK); k_air = 0.024 from Tsilingiris 2008; k_solid_basalt = 2.2 from Bristow, 2002; k_solid_granite = 3.7 from Piqueux 2011;
+
+% varargin to adjust values from defaults as needed:
+%   'k_upper_min','k_upper_max','k_lower_min','k_lower_max','depth_min','depth_max',
+%   'm_min','m_max','CH_min','CH_max','CE_min','CE_max','theta_k_min','theta_k_max','theta_E_min','theta_E_max')
+%   k (upper and lower) = thermal conductivity (W/mK);
 %   depth = subsurface depth transition between k_upper and k_lower (m)
 %   m = pore-network-connectivity (unitless)
 %   CH = sensible heat resistence coefficent (unitless)
 %   CE = latent heat resistence coefficient (unitless)
 %   theta_k = soil moisture inflection point for thermal conductivity (% by volume)
 %   theta_E = soil moisture inflection point for latent heat (% by volume)
+
+% INPUTS
+%   FitParams: parameters for fitting (vector)
 % 
 % OUTPUT 
-%   logp = If the simulation is within the ranges, the log-probability is 0. Otherwise, it's -infinity.
+%   logp = If the simulation is within the ranges, the log-probability is
+%   0. Otherwise, it's -infinity (vector)
 %
 % AUTHOR
 %   Ari Koeppel, 2023

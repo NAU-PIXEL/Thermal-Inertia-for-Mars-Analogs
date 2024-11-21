@@ -1,6 +1,5 @@
 function [q_sensible,SHCoeff] = tima_sensible_heat_model(CH,windspeed_horiz,air_temp_K,T_surf_K)
-%***************
-% TIMA_SENSIBLE_HEAT_MODEL
+%% TIMA_SENSIBLE_HEAT_MODEL
 %   function to calculate sensible heat flux at the surface due to forced convection at a given timestep using a tunable aerodynamic method
 %
 % Syntax

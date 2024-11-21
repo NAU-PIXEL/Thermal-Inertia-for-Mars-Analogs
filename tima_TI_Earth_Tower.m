@@ -1,22 +1,33 @@
 function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
+%% TIMA_TI_EARTH_TOWER (Thermal Inertia for Mars Analogs)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
-%   observations taken in the field to fit 1D multi-parameter model to each pixel. Justification for
-%   approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
+%   observations taken in the field to fit 1D multi-parameter model.
 %
 % Description
-%   This model uses a surrogate optimization solver with 1-7 paramters to fit IR-image-observed
+%   This model uses an MCMC probabilistic solver with 6-8 paramters to fit IR-image-observed
 %   surface temperatures using meteorological data and surface parameters derived from
-%   aerial/satellite imagery. Fitting Parameters can include any or all of: top layer thermal
-%   conductivity at 300K, bottome layer thermal conductivity at 300K, Depth of thermal conductivity
-%   transition, pore-network-connectivity, Surf. ex. coef. (sensible), Surf. ex. coef. (latent), Soil Moist. Inflection (conductivity) (%), Soil Moist. Infl. (latent heat) (%)
+%   aerial/satellite imagery. Fitting Parameters can include any or all of: top layer bulk dry thermal
+%   conductivity at a standard temperature, pore-network-connectivity parameter, Surf. ex. coef. (sensible),
+%   Surf. ex. coef. (latent), Soil Moist. Inflection (conductivity) (%),
+%   Soil Moist. Infl. (latent heat) (%), depth transition (m), bottom layer bulk dry thermal
+%   conductivity at a standard temperature
 %
-% SYNTAX
+% Syntax
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR)
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'TwoSpot',true)
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer')
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Parallel',true)
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'SaveModels',true)
-
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','2layer')
+%
+% varargin options:
+%   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
+%       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
+%       layer and the transition depth) (default='1layer') (string)
+%   'TwoSpot': Option to simultaneously fit two different sets of surface temperatures
+%       with the same parameters (default=false) (logical)
+%   'Parallel': Run in ensemble of walkers in parallel. (default=false)
+%       (logical)
+%   'SaveModels': Option to save the models output to a .mat file
+%       (default=false) (logical)
+%
 % Input Parameters
 %   TData: Time data - struct of timeseries data variables (all vectors)
 %       TData.air_Temp_C: [C] near surface air temperature, typically at 3 m AGL
@@ -50,8 +61,6 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %   MData: Model Data - Struct of static and model format variables
 %       MData.burnin: fraction of the chain that should be removed.
 %           (vector, default=0)
-%       MData.col_min: For reduced column range, minimum (vector)
-%       MData.col_max: For reduced column range, maximum (vector)  
 %       MData.density: [kg/m^3] Value for density of soil beneath tower.  (vector)
 %       MData.dt: [s] Time step (vector)
 %       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
@@ -61,8 +70,6 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %           to (vector)
 %       MData.layer_size: [m] List of vertical thickness for each layer
 %           from top to bottom. (vector)
-%       MData.lbound: List of lower limits on variables being fit for, in
-%           same order as MData.vars_init (vector, size MData.nvars)
 %       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
 %       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
 %       MData.minit: Vector of initialized test variables with as many
@@ -73,7 +80,6 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %           (vector)
 %       MData.nvars: Number of variables being fit for (vector)
 %       MData.nwalkers: Number of walkers in MCMC ensemble (vector)
-%       MData.parallel: true or false whether to run fitting tool in parallel  (logical, default false)
 %       MData.ThinChain: MCMC data reduction by thinning all output chains by only storing every N'th step (vector, default=10)
 %       MData.T_adj1: [index, temperature K] pair used to force column
 %           temperature change at a given time point due to wetting (vector,
@@ -85,15 +91,16 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %       MData.T_start: [K] Initial condition, list of center temperatures
 %           for each layer at start of simulation (vector)
 %       MData.T_std: [K] Standard temperature; typically 300 (vector)
-%       MData.UAV_flight_times: list of capture times of thermal mosaics of field region (datetime)
-%       MData.ubound: List of upper limits on variables being fit for, in
-%           same order as MData.vars_init (vector, size MData.nvars)
 %       MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
 %           Surf. ex. coef. (CH) [unitless], Surf. ex. coef. (CE) [unitless], Soil Moist. Infl. (thetak) [% by volume],...
 %           Soil Moist. Infl. (thetaE) [% by volume], (Transition Depth [m]), (k-lower [W/mK])]
 %           List of 6-8 inputs for variables to serve as either initial or fixed values. (vector)
 %
 %   out_DIR: Full path to directory for outputs (string)
+%
+% Output Parameters
+%   models: A nvars by (nwalkers*nsteps/ThinChain) matrix with the thinned markov chains (vector)
+%   names: array of names of fitting variables (character array)
 %
 % Author
 %    Ari Koeppel -- Copyright 2023
@@ -107,7 +114,8 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %   Thermal conductivity mixing:
 %   
 % See also 
-%   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
+%   time_heat_transfer.m tima_initialize.m tima_ln_prior.m
+%   tima_mapping_recombine_rows.m
 
 format shortG
 p = inputParser;
