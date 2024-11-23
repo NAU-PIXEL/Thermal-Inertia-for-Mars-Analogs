@@ -49,7 +49,7 @@ elseif strcmp(material,"sandstone")
     Cp_solid = 775*CpnT(Temp_K-273.15)/CpnT(20);
 elseif strcmp(material,"clay")
     Cp_solid = 860*CpnT(Temp_K-273.15)/CpnT(20); %clay
-elseif mstrcmp(material,"salt")
+elseif strcmp(material,"salt")
     Cp_solid = 880*CpnT(Temp_K-273.15)/CpnT(20); %Salt
 elseif strcmp(material,"ice") %Waples 2004b
     Cp_solid = 7.8277.*(Temp_K-273.15)+2115;

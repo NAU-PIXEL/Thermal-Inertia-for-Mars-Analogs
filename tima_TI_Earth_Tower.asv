@@ -249,7 +249,7 @@ for r=1:M
 end
 %%
 if TwoSpot == true
-    fval = tima_fval_dchi2v_dt([TData.temps_to_fit(MData.fit_ind);TData.temps_to_fit_II(MData.fit_ind)],[tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod);tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)],...
+    fval = tima_fval_dchi2v_dt([TData.temps_to_fit(MData.fit_ind);TData.temps_to_fit_II(MData.fit_ind)],[tima_formod_subset(RESULTS(2,:));tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)],...
         [MData.erf(TData.temps_to_fit(MData.fit_ind)); MData.erf(TData.temps_to_fit_II(MData.fit_ind))],MData.nvars);
 else
     fval = tima_fval_dchi2v_dt(TData.temps_to_fit(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit(MData.fit_ind)),MData.nvars);
