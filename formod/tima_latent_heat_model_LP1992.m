@@ -1,5 +1,5 @@
 function [q_latent,soil_RH,LHCoeff] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC)
-% TIMA_LATENT_HEAT_MODEL_LP1992
+%% TIMA_LATENT_HEAT_MODEL_LP1992
 %   function to calculate latent heat flux due to evaporation in a given layer at a given timestep using a tunable aerodynamic method
 %
 % Syntax

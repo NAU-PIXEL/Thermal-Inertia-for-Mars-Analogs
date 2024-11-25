@@ -1,0 +1,2 @@
+1D thermal model results considering one location (note: nov-11-2024).
+Datetime: 1632-21-Nov-2024 Runtime: 803.2 s

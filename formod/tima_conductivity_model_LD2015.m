@@ -1,15 +1,12 @@
-function [k_eff] = tima_conductivity_model_CK2005(k_dry_std,Soil_Temperature,T_std,VWC,theta_k,m,Soil_RH,material)
-% TIMA_CONDUCTIVITY_MODEL_CK2005
-%   function to calculate the effective thermal conductivity of a particulate soil or sediment using the Cote & Konrad 2005 Method
+function [k_eff] = tima_conductivity_model_LD2015(k_dry_std,Soil_Temperature,T_std,VWC,theta_k,m,Soil_RH,material)
+%% TIMA_CONDUCTIVITY_MODEL_LD2015
+%   function to calculate the effective thermal conductivity of a particulate soil or sediment using the Lu & Dong 2015 Method
 %
 % Description
-%   0<m<10 Best for granular
-%      with no hydration regime, asymptotal lower limit. 4.60, 3.55, 1.90,
-%      and 0.60 for gravel and coarse sand, medium and fi ne sand, silty and
-%      clayey soils, and organic fi brous soils, respectively.
+%   1<m Best for Clays with hydration regime
 %
 % Syntax
-%   [k_eff] = tima_conductivity_model_CK2005(k_dry_std,Soil_Temperature,T_std,VWC,theta_k,m,Soil_RH,material)
+%   [k_eff] = tima_conductivity_model_LD2015(k_dry_std,Soil_Temperature,T_std,VWC,theta_k,m,Soil_RH,material)
 %
 % Inputs
 %   k_dry_std: [W/mK] stardard bulk dry thermal conductivty at T_std (vector)
@@ -56,24 +53,24 @@ k_H2O = -1.1e-5.*(Soil_Temperature - 273.15).^2 + 0.00234.*(Soil_Temperature - 2
 
 
 % k-bulk-dry from theory
-if material == 'basalt'
+if strcmp(material,'basalt')
     k_dry_mod = 2*k_air.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8
     k_dry_mod_avg = 2*k_air_avg.^(0.8964.*theta_k + 0.28); % Piquex 2009a Fig 8 R > 0.98 within range 0.01-0.035
     k_solid = 1.18 + 474/(350+Soil_Temperature-273.15);%  % Piqueux and Christensen 2011/Clauser and Huenges [1995]
 % Roughly = 2.2, Bristow, 2002
-elseif material == 'amorphous'
+elseif strcmp(material,'amorphous')
     k_solid = 0.6924 + 0.0015*(Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'granite'
+elseif strcmp(material,'granite')
     k_solid = 2.0;
     % Roughly = 2.0 (granite), Bristow, 2002
-elseif material == 'quartz'
+elseif strcmp(material,'quartz')
     k_solid = 7.69; %(horai 1971)
-elseif material == 'clay'
+elseif strcmp(material,'clay')
     k_solid = 2.9;
     % Roughly = 2.9 (clay), Bristow, 2002
-elseif material == 'salt'
+elseif strcmp(material,'salt')
     k_solid = -2.11 + 2960/(350+Soil_Temperature-273.15); %Piqueux and Christensen 2011/Clauser and Huenges [1995]
-elseif material == 'ice'
+elseif strcmp(material,'ice')
     k_solid = 2.18;
     % Roughly = 2.18, Bristow, 2002
 else
@@ -96,5 +93,5 @@ k_wet = k_solid^(1-theta_k)*(k_H2O^theta_k);%geometric mean to calculate thermal
 if Sr>1, Sr = 1; end
 
 %**********K Model************
-k_eff = k_dry + (m*(Sr)/(1+(m-1)*Sr))*(k_wet-k_dry); %Cote and Konrad 2005 + Zhang (2017)
+k_eff = k_dry + (1 - (1+(Sr)^m)^(1/m-1))*(k_wet-k_dry); %Lu and Dong 2015 1<m Best for Clays with hydration regime
 end

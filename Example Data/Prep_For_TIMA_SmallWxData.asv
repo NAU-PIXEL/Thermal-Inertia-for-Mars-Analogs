@@ -348,5 +348,6 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
 
 % clearvars -except out_DIR TData MData
 c = fix(clock);
-[fname, outDIR] = uiputfile(sprintf('_%02.0f%02.0f-%s.mat',c(4),c(5),date), 'Please navigate to outDIR and enter filename with .mat suffix : ');
-save([outDIR,fname],'TData','MData','outDIR','-mat')
+[fname, outDIR] = uiputfile('*.mat', 'Please enter filename and with no suffix and navigate to outDIR: ');
+fullname = sprintf([fname,'_%02.0f%02.0f-%s.mat'],c(4),c(5),date);
+save([outDIR,'\',fullname],'TData','MData','outDIR','-mat')

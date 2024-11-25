@@ -1,5 +1,5 @@
 function [Psat] = tima_psaturationpa_Sonntag1994(TempK)
-% TIMA_PSATURATIONPA_SONNTAG1994
+%% TIMA_PSATURATIONPA_SONNTAG1994
 %   function to saturation vapor pressure at a given temperature
 %
 % Syntax

@@ -1,5 +1,5 @@
 function [Cp] = tima_specific_heat_model_DV1963(rho_dry,rho,Temp_K,material)
-% TIMA_VERHOEF_SPECIFIC_HEAT_MODEL_DV1963
+%% TIMA_VERHOEF_SPECIFIC_HEAT_MODEL_DV1963
 %   function to calculates specific heat as a funtion of volumetric water content, temperature, and density
 %
 % Description
@@ -39,19 +39,19 @@ function [Cp] = tima_specific_heat_model_DV1963(rho_dry,rho,Temp_K,material)
 %   Abu-Hamdeh -- clay: 1170-2250, sand: 830-1670
 %   Solid Rock Eq from Robertson, E.C. and Hemingway, B.S., 1995. Estimating heat capacity and heat content of rocks (No. 95-622). US Geological Survey.
 CpnT = @(T)8.95E-10.*T.^3-2.13E-6.*T.^2+0.00172.*T+0.716; %Waples2004a Temp in C
-if material == "placeholder"%"basalt"
+if strcmp(material,"basalt")
     Cp_solid = 898*CpnT(Temp_K-273.15)/CpnT(20); %basalt
-elseif material == "amorphous" %silica glass
+elseif strcmp(material,"amorphous") %silica glass
     Cp_solid = 795*CpnT(Temp_K-273.15)/CpnT(20); %Volcanic tuff
-elseif material == "granite"
+elseif strcmp(material,"granite")
     Cp_solid = 1172*CpnT(Temp_K-273.15)/CpnT(20);
-elseif material == "sandstone"
+elseif strcmp(material,"sandstone")
     Cp_solid = 775*CpnT(Temp_K-273.15)/CpnT(20);
-elseif material == "clay"
+elseif strcmp(material,"clay")
     Cp_solid = 860*CpnT(Temp_K-273.15)/CpnT(20); %clay
-elseif material == "salt" 
+elseif strcmp(material,"salt")
     Cp_solid = 880*CpnT(Temp_K-273.15)/CpnT(20); %Salt
-elseif material == "ice" %Waples 2004b
+elseif strcmp(material,"ice") %Waples 2004b
     Cp_solid = 7.8277.*(Temp_K-273.15)+2115;
 else
     Cp_solid = -23.173+2.127.*Temp_K+1.5008e-2.*Temp_K.^2-7.3699e-5.*Temp_K.^3+9.6552E-8.*Temp_K.^4; %Cp of solids - polynomial fit for basalt mineral soils
