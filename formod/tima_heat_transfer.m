@@ -147,22 +147,13 @@ omega = (1+cosd(slope_angle))/2; % visible sky fraction ISOtropic sky model
 NLAY = length(layer_size);
 T = NaN(length(air_temp_C),NLAY); %Matrix of Temperatures for each layer and time point, T(1,t) is surface temp array that will be fit to obs data
 T(1,:) = initial_temps;
+T(:,NLAY) = T_deep;
 [~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
 Mantle_Ind = 0;
 if mantle_thickness>0
     [~,Mantle_Ind] = min(abs(mantle_thickness-cumsum(layer_size))); %index of depth for surfce mantle transition
 end
-%% ISSSUE ***********
-if strcmp(material_lower,"ice")
-    ice_temps = T(1,D_z:end);
-    ice_temps(ice_temps>273.15) = 273.15;
-    T(1,D_z:end) = ice_temps;
-    %*v** Check to see if this is necessary or causes instability
-    % T(:,D_z) = T_deep; %Constant lower boundary temp due to hydrology
-else
-    T(:,NLAY) = T_deep; %Constant lower boundary temp
-end
-%% ***************
+m_melt = zeros(NLAY,1);%area density of melted ice per layer kg/m^2
 k = k_dry_std_upper.*ones(1,NLAY);
 kay_upper = k_dry_std_upper;
 kay_lower = k_dry_std_lower;
@@ -171,7 +162,6 @@ FB = layer_size(2)/layer_size(1);
 for z = 1:NLAY-1
     FC(z) = 2*dt/layer_size(z)^2;
 end
-
 for t = 2:length(air_temp_C)
     %*********LATENT HEAT & THERMAL CONDUCTIVITY***********
     [q_evap_1,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,1),VWC_column(t-1,1));
@@ -239,16 +229,16 @@ for t = 2:length(air_temp_C)
     dT = dt/(Cp*rho*layer_size(1))*(W); %Temperature change for given thickness of material with known volumetric Cp
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
-    if ~isempty(T_adj1)
-        if VWC_column(t,1) > 0.02 && (t == ceil(T_adj1(1)))
-            T(t,1) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
-        end
-    end
-    if ~isempty(T_adj2)
-        if VWC_column(t,1) > 0.02 && (t == ceil(T_adj2(1)))
-            T(t,1) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
-        end
-    end
+    % if ~isempty(T_adj1)
+    %     if VWC_column(t,1) > 0.02 && (t == ceil(T_adj1(1)))
+    %         T(t,1) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
+    %     end
+    % end
+    % if ~isempty(T_adj2)
+    %     if VWC_column(t,1) > 0.02 && (t == ceil(T_adj2(1)))
+    %         T(t,1) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
+    %     end
+    % end
     %*********Subsurface Flux (from KRC, Kieffer, 2013)***********
     for z = 2:NLAY-1 %layer loop
         if z <= Mantle_Ind && z < D_z %Surface Mantle (low k material that causes high frequency imprint on general diurnal trend
@@ -273,27 +263,11 @@ for t = 2:length(air_temp_C)
             Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
         else
             if strcmp(material_lower,"ice")
-                % if z == D_z
-                %     %T(t-1,z) = T_deep;
-                %     if sum(layer_size(1:z)) <= evap_depth(t-1)
-                %         [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
-                %     else
-                %         [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
-                %         q_evap_z = 0; %Evap_Coeff
-                %     end
-                %     k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material);
-                %     rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
-                %     Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
-                % else
-                %% ISSUE********
-                    if T(t-1,z) > 273.15, T(t-1,z) = 273.15; end
-                    %% *********
-                    rho = 1500; %kg/m^3
-                    Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
-                    q_evap_z = 0; %Evap_Coeff
-                    %Soil_RH = 1;
-                    k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
-                % end
+                rho = 1500; %kg/m^3
+                Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
+                q_evap_z = 0; %Evap_Coeff
+                %Soil_RH = 1;
+                k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
             else
                 if sum(layer_size(1:z)) <= evap_depth
                     [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
@@ -307,7 +281,9 @@ for t = 2:length(air_temp_C)
             end
         end
         % if layer_size(z)/sqrt(2*dt*(k(z)/rho/Cp)) < 1
-        %     error('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
+        %     fprintf('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
+        %     T(t:end,1) = -65535;
+        %     break
         % end
         %Subsurface Multip Factors (Kieffer, 2013)
         F1 = FC(z)*k(z)/((Cp*rho)*(1+FB*k(z)/k(z+1)));
@@ -316,17 +292,29 @@ for t = 2:length(air_temp_C)
         %Temperature response
         dT = F1*(T(t-1,z+1)+F2*T(t-1,z)+F3*T(t-1,z-1))+dt/(Cp*rho*layer_size(z))*q_evap_z;
         T(t,z) = T(t-1,z)+dT;
-        if ~isempty(T_adj1)
-            if VWC_column(t,z) > 0.02 && (t == ceil(T_adj1(1)))
-                T(t,z) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
-            end
+        if strcmp(material_lower,"ice") && T(t,z) > 273.15 && z >= D_z
+            q_melt = (T(t,z)-273.15)*(Cp*rho*layer_size(z)); %heat in to ice J/m^2
+            m_melt(z) = m_melt(z)+q_melt/334000; %heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
+            if m_melt(z) > 1500*layer_size(z); D_z = D_z+1; end %melting
+            %elseif freezing
+            T(t,z) = 273.15;
         end
-        if ~isempty(T_adj2)
-            if VWC_column(t,z) > 0.02 && (t == ceil(T_adj2(1)))
-                T(t,z) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
-            end
-        end
+        % if ~isempty(T_adj1)
+        %     if VWC_column(t,z) > 0.02 && (t == ceil(T_adj1(1)))
+        %         T(t,z) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
+        %     end
+        % end
+        % if ~isempty(T_adj2)
+        %     if VWC_column(t,z) > 0.02 && (t == ceil(T_adj2(1)))
+        %         T(t,z) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
+        %     end
+        % end
     end
 end
 T_Surf_C = T(:,1) - 273.15;
+if any(~isreal(T_Surf_C)) || any(isnan(T_Surf_C))
+    fprintf('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
+    T_Surf_C(~isreal(T_Surf_C)) = -65535;
+    T_Surf_C(isnan(T_Surf_C)) = -65535;
+end
 

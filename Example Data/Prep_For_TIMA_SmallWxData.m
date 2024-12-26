@@ -195,7 +195,7 @@ WindSpeed_ms_10 = Data.WS_ms_Avg; % Wind Speed from sensor @ ~10 ft (3 m) height
 WindSpeed_ms_10_smooth = smoothdata(WindSpeed_ms_10,'gaussian',Smooth_Window); %wind is noisy, so this smoothes it
 
 %% Routine to set up boundary and initial conditions for model
-FLAY = 0.0075;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
+FLAY = 0.005;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
 
 % ***************
 clear T_Test
@@ -235,7 +235,7 @@ for i = 1:length(stability_array) %Loop to optimize layer thickness (i.e. highes
 
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures
-    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,VWC_column,Humidity,NDAYS,material);
+    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,VWC_column,Humidity,NDAYS,material,'depth_transition',Vars_init(7),'material_lower',material_lower);
     Subsurface_Temperatures_Running(:,:) = Subsurface_Temperatures(1,:,:)-273.15; %Set up array using first day
     for D = 2:size(Subsurface_Temperatures,1) % for plotting
         TEMP(:,:) = Subsurface_Temperatures(D,:,:)-273.15;
