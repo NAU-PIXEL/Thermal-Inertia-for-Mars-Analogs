@@ -1,7 +1,7 @@
 function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
-    pressure_air_pa,varargin)
+    pressure_air_pa,Interpolated_Temp,varargin)
 %% TIMA_HEAT_TRANSFER
 %   This function uses observational data and assigned thermophysical properties 
 %   to estimate the emitting surface temperature through time.
@@ -146,7 +146,11 @@ omega = (1+cosd(slope_angle))/2; % visible sky fraction ISOtropic sky model
 % Initial and boundary conditions setup + array initiation:
 NLAY = length(layer_size);
 T = NaN(length(air_temp_C),NLAY); %Matrix of Temperatures for each layer and time point, T(1,t) is surface temp array that will be fit to obs data
+Subsurface_Temperatures = tima_initialize(k_dry_std_upper,rho_dry_upper,m,...
+    theta_k,T_std,T_deep,Interpolated_Temp,dt,layer_size,VWC_column,RH,20,material,'depth_transition',depth_transition,'material_lower',material_lower);
+initial_temps=Subsurface_Temperatures(end,end,:);
 T(1,:) = initial_temps;
+%T(1,1) = Interpolated_Temp(1);
 T(:,NLAY) = T_deep;
 [~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
 Mantle_Ind = 0;

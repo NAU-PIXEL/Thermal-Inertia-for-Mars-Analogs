@@ -146,6 +146,9 @@ omega = (1+cosd(slope_angle))/2; % visible sky fraction ISOtropic sky model
 % Initial and boundary conditions setup + array initiation:
 NLAY = length(layer_size);
 T = NaN(length(air_temp_C),NLAY); %Matrix of Temperatures for each layer and time point, T(1,t) is surface temp array that will be fit to obs data
+Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,VWC_column,Humidity,NDAYS,material,'depth_transition',Vars_init(7),'material_lower',material_lower);
+initialtemps=Subsurface_Temperatures(end,end,:);
+T_Start(1) = StartTemp_1;
 T(1,:) = initial_temps;
 T(:,NLAY) = T_deep;
 [~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
@@ -297,7 +300,7 @@ for t = 2:length(air_temp_C)
             m_melt(z) = m_melt(z)+q_melt/334000; %heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
             if m_melt(z) > 1500*layer_size(z); D_z = D_z+1; end %melting
             %elseif freezing
-            T(t,z) = 0;
+            T(t,z) = 273.15;
         end
         % if ~isempty(T_adj1)
         %     if VWC_column(t,z) > 0.02 && (t == ceil(T_adj1(1)))
