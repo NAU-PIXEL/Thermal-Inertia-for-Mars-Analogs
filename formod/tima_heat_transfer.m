@@ -109,6 +109,8 @@ p.addParameter('shadow_data',[],@isnumeric);
 p.addParameter('shadow_time_ind',[],@isnumeric);
 p.addParameter('material',"basalt",@ischar);
 p.addParameter('material_lower',"basalt",@ischar);
+p.addParameter('mantle_thickness',[],@isnumeric);
+p.addParameter('k_dry_std_mantle',[],@isnumeric);
 p.addParameter('MappingMode',false,@islogical);
 p.addParameter('T_adj1',[]);
 p.addParameter('T_adj2',[]);
@@ -131,6 +133,8 @@ shadow_data = p.shadow_data;
 T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
 T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 e_fxn = p.e_fxn;
+mantle_thickness = p.mantle_thickness;
+k_dry_std_mantle = p.k_dry_std_mantle;
 % ***************
 
 % ***************
@@ -143,11 +147,25 @@ omega = (1+cosd(slope_angle))/2; % visible sky fraction ISOtropic sky model
 NLAY = length(layer_size);
 T = NaN(length(air_temp_C),NLAY); %Matrix of Temperatures for each layer and time point, T(1,t) is surface temp array that will be fit to obs data
 T(1,:) = initial_temps;
-T(:,NLAY) = T_deep; %Constant lower boundary temp
+[~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
+Mantle_Ind = 0;
+if mantle_thickness>0
+    [~,Mantle_Ind] = min(abs(mantle_thickness-cumsum(layer_size))); %index of depth for surfce mantle transition
+end
+%% ISSSUE ***********
+if strcmp(material_lower,"ice")
+    ice_temps = T(1,D_z:end);
+    ice_temps(ice_temps>273.15) = 273.15;
+    T(1,D_z:end) = ice_temps;
+    %*v** Check to see if this is necessary or causes instability
+    % T(:,D_z) = T_deep; %Constant lower boundary temp due to hydrology
+else
+    T(:,NLAY) = T_deep; %Constant lower boundary temp
+end
+%% ***************
 k = k_dry_std_upper.*ones(1,NLAY);
 kay_upper = k_dry_std_upper;
 kay_lower = k_dry_std_lower;
-[~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
 FC = NaN(NLAY-1,1);
 FB = layer_size(2)/layer_size(1);
 for z = 1:NLAY-1
@@ -157,7 +175,11 @@ end
 for t = 2:length(air_temp_C)
     %*********LATENT HEAT & THERMAL CONDUCTIVITY***********
     [q_evap_1,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,1),VWC_column(t-1,1));
-    k(1) = tima_conductivity_model_lu2007(kay_upper,T(t-1,1),T_std,VWC_column(t-1,1),theta_k,m,Soil_RH,material);%Top
+    if Mantle_Ind >= 1
+        k(1) = tima_conductivity_model_lu2007(k_dry_std_mantle,T(t-1,1),T_std,VWC_column(t-1,1),theta_k,m,Soil_RH,material);%Top
+    else
+        k(1) = tima_conductivity_model_lu2007(kay_upper,T(t-1,1),T_std,VWC_column(t-1,1),theta_k,m,Soil_RH,material);%Top
+    end
     [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,NLAY),VWC_column(t-1,end));
     k(NLAY) = tima_conductivity_model_lu2007(kay_lower,T(t-1,NLAY),T_std,VWC_column(t-1,end),theta_k,m,Soil_RH,material_lower);%Top;%Bottom
     %****************************************
@@ -218,18 +240,28 @@ for t = 2:length(air_temp_C)
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
     if ~isempty(T_adj1)
-        if VWC_column(t,1) > 0.03 && (t == ceil(T_adj1(1)))
-            T(t,1) = T_adj1(2); %Value taken from T109 probe in watering can
+        if VWC_column(t,1) > 0.02 && (t == ceil(T_adj1(1)))
+            T(t,1) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
         end
     end
     if ~isempty(T_adj2)
         if VWC_column(t,1) > 0.02 && (t == ceil(T_adj2(1)))
-            T(t,1) = T_adj2(2); %Value taken from T109 probe in watering can
+            T(t,1) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
         end
     end
     %*********Subsurface Flux (from KRC, Kieffer, 2013)***********
     for z = 2:NLAY-1 %layer loop
-        if z < D_z
+        if z <= Mantle_Ind && z < D_z %Surface Mantle (low k material that causes high frequency imprint on general diurnal trend
+            if sum(layer_size(1:z)) <= evap_depth(t-1)
+                [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
+            else
+                [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
+                q_evap_z = 0; %Evap_Coeff
+            end
+            k(z) = tima_conductivity_model_lu2007(k_dry_std_mantle,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material);
+            rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
+            Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
+        elseif z < D_z
             if sum(layer_size(1:z)) <= evap_depth(t-1)
                 [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
             else
@@ -240,13 +272,28 @@ for t = 2:length(air_temp_C)
             rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
             Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
         else
-            if material_lower == "ice"
-                if T(t-1,z) > 273.15, T(t-1,z) = 273.15; end
-                rho = 1500; %kg/m^3
-                Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
-                q_evap_z = 0; %Evap_Coeff
-                %Soil_RH = 1;
-                k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
+            if strcmp(material_lower,"ice")
+                % if z == D_z
+                %     %T(t-1,z) = T_deep;
+                %     if sum(layer_size(1:z)) <= evap_depth(t-1)
+                %         [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
+                %     else
+                %         [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
+                %         q_evap_z = 0; %Evap_Coeff
+                %     end
+                %     k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material);
+                %     rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
+                %     Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
+                % else
+                %% ISSUE********
+                    if T(t-1,z) > 273.15, T(t-1,z) = 273.15; end
+                    %% *********
+                    rho = 1500; %kg/m^3
+                    Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
+                    q_evap_z = 0; %Evap_Coeff
+                    %Soil_RH = 1;
+                    k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
+                % end
             else
                 if sum(layer_size(1:z)) <= evap_depth
                     [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
@@ -256,7 +303,7 @@ for t = 2:length(air_temp_C)
                 end
                 k(z:end) = tima_conductivity_model_lu2007(kay_lower,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material_lower);
                 rho = rho_dry_lower + rho_H2O*VWC_column(t-1,z); %H2O dep
-                Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material_lower);
+                Cp = tima_specific_heat_model_DV1963(rho_dry_lower,rho,T(t-1,z),material_lower);
             end
         end
         % if layer_size(z)/sqrt(2*dt*(k(z)/rho/Cp)) < 1

@@ -1,6 +1,6 @@
 function [T_surf_C,T_sub_C,q_evap,k_eff_dt,q_conv,q_rad,q_G]= tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,RH,emissivity,...
+    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
     pressure_air_pa,varargin)
 
 % TIMA_HEAT_TRANSFER
@@ -249,7 +249,7 @@ for t = 2:length(air_temp_C)
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
     if ~isempty(T_adj1)
-        if VWC_column(t,1) > 0.03 && (t == ceil(T_adj1(1)))
+        if VWC_column(t,1) > 0.02 && (t == ceil(T_adj1(1)))
             T(t,1) = T_adj1(2); %Value taken from T109 probe in watering can
         end
     end

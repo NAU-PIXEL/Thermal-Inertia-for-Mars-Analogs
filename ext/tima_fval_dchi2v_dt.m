@@ -21,9 +21,9 @@ function [fval] = tima_fval_dchi2v_dt(observed,modeled,error,nvars)
     dmod = gradient(modeled);
 
     % Remove the last element to match sizes (ddata1 and ddata2 will be 1 shorter)
-    dobs = movmean(dobs(1:end-1),5);
-    dmod = movmean(dmod(1:end-1),5);
-    unc = movmean(error(1:end-1),5);
+    dobs = movmean(dobs,60);
+    dmod = movmean(dmod,60);
+    unc = error;
 
     % Compute the chi-squared statistic
     chi_squared = sum(((dobs - dmod).^2) ./ unc.^2);
