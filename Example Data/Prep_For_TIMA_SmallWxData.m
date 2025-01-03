@@ -353,6 +353,7 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       MData.material_lower=material_lower;
       MData.nwalkers = nwalkers;
       MData.nstep = nstep;
+      MData.ndays = NDAYS;
       MData.minit = minit;
       MData.nvars=nvars;
       MData.parallel=true;

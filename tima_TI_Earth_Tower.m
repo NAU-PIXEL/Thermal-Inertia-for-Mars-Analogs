@@ -30,78 +30,81 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %
 % Input Parameters
 %   TData: Time data - struct of timeseries data variables (all vectors)
-%       TData.air_Temp_C: [C] near surface air temperature, typically at 3 m AGL
+%       TData.air_Temp_C: [C] near surface air temperature, typically at 3
+%           m AGL (1D vector)
 %       TData.DF: [decimal fraction] Fraction of  Global Horizontal Irradiance (GHI)
-%           or r_short_upper that is diffuse (see
-%           https://github.com/sandialabs/MATLAB_PV_LIB)
-%       TData.evap_depth: [m] Depth of the evaporation front.
+%           or r_short_upper that is diffuse (1D vector)
+%       TData.evap_depth: [m] Depth of the evaporation front. (1D vector)
 %       TData.temps_to_fit: [C] Surface temperature values to be used for
-%           fitting.
+%           fitting. (1D vector)
 %       TData.timed_albedo: [decimal fraction] time variant albedo (e.g.,
-%           due to wetting) for fitting surface.
+%           due to wetting) for fitting surface. (1D vector)
 %       TData.TIMESTAMP: datetime array associated with each table row
-%           spaced by Mdata.dt [s] (datetime)
+%           spaced by Mdata.dt [s] (1D datetime)
 %       TData.humidity: [decimal fraction] array of near surface relative humidity values,
 %           typically at 3m AGL TData.r_long_upper: [W/m^2] Integrated longwave radiation (4.5 to 42 μm) incident on flat
-%           surface
-%       TData.pressure_air_Pa: [Pa] station pressure, typically at 3m AGL
+%           surface (1D vector)
+%       TData.pressure_air_Pa: [Pa] station pressure, typically at 3m AGL (1D vector)
+%       TData.r_long_upper: [W/m^2] Integrated longwave radiation (4500 to 42000 nm) incident on flat
+%           surface (1D vector)
 %       TData.r_short_lower: [W/m^2] Integrated upwelling shortwave radiation (305 to 2800 nm) from flat
-%           surface
+%           surface (1D vector)
 %       TData.r_short_upper: [W/m^2] Integrated shortwave radiation (305 to 2800 nm) incident on flat
-%           surface
+%           surface (1D vector)
 %       TData.solarazimuth_cwfromS: [degrees] Solar azimuth in degrees
-%           clockwise from South, typically -180:180 or 0:360
+%           clockwise from South, typically -180:180 or 0:360 (1D vector)
 %       TData.solarzenith_apparent: [degrees] Solar zenith in degrees,
-%           corrected for atmospheric refraction.
+%           corrected for atmospheric refraction. (1D vector)
 %       TData.VWC_column: [decimal fraction by volume] array of volumetric water content
 %           for each model layer with each time step, typically
-%           interpolated.
+%           interpolated. (2D vector)
 %       TData.windspeed_horiz_ms: [m/s] Near surface horizontal wind speed,
-%           typically at 3m AGL.
+%           typically at 3m AGL. (1D vector)
 %   
 %   MData: Model Data - Struct of static and model format variables
 %       MData.burnin_fit: initial time length (s) to ignore in fitting (vector, default=0)
 %       MData.burnin_mcmc: fraction of the chain that should be removed.
-%           (vector, default=0)
-%       MData.density: [kg/m^3] Value for density of soil beneath tower.  (vector)
-%       MData.dt: [s] Time step (vector)
+%           (scalar, default=0)
+%       MData.density: [kg/m^3] Value for density of soil beneath tower.
+%           (scalar)
+%       MData.dt: [s] Time step (scalar)
 %       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
-%           range of sensor. (vector)
+%           range of sensor. (scalar)
 %       MData.erf: Uncertainty as function of observed temperature (function_handle)
 %       MData.fit_ind: Indecies of temps_to_fit in which to apply fitting
-%           to (vector)
+%           to (scalar)
 %       MData.layer_size: [m] List of vertical thickness for each layer
-%           from top to bottom. (vector)
+%           from top to bottom. (1D vector)
 %       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
 %       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
 %       MData.minit: Vector of initialized test variables with as many
 %           randomized samples as desired for fitting, 50 is good such that
-%           vector is nvarx50 (vector)
+%           vector is nvarx50 (2D vector)
 %       MData.notes: Details to record in data structure (string)
 %       MData.nstep: Number of iterations for curve fitting, 250 is good
-%           (vector)
-%       MData.nvars: Number of variables being fit for (vector)
-%       MData.nwalkers: Number of walkers in MCMC ensemble (vector)
-%       MData.ThinChain: MCMC data reduction by thinning all output chains by only storing every N'th step (vector, default=10)
+%           (scalar)
+%       MData.nvars: Number of variables being fit for (scalar)
+%       MData.nwalkers: Number of walkers in MCMC ensemble (scalar)
+%       MData.ThinChain: MCMC data reduction by thinning all output chains by only storing every N'th step (scalar, default=10)
 %       MData.T_adj1: [index, temperature K] pair used to force column
-%           temperature change at a given time point due to wetting (vector,
+%           temperature change at a given time point due to wetting (1D vector,
 %           optional)
 %       MData.T_adj2: [index, temperature K] pair used to force a second
-%           column temperature change at a given time point due to wetting (vector,
+%           column temperature change at a given time point due to wetting (1D vector,
 %           optional)
-%       MData.T_deep: [K] Lower boundary condition, fixed temperature (vector)
-%       MData.T_start: [K] Initial condition, list of center temperatures
-%           for each layer at start of simulation (vector)
-%       MData.T_std: [K] Standard temperature; typically 300 (vector)
+%       MData.T_deep: [K] Lower boundary condition, fixed temperature (scalar)
+%%       MData.T_start: [K] Initial condition, list of center temperatures
+%           for each layer at start of simulation (scalar)
+%       MData.T_std: [K] Standard temperature; typically 300 (scalar)
 %       MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
 %           Surf. ex. coef. (CH) [unitless], Surf. ex. coef. (CE) [unitless], Soil Moist. Infl. (thetak) [% by volume],...
 %           Soil Moist. Infl. (thetaE) [% by volume], (Transition Depth [m]), (k-lower [W/mK])]
-%           List of 6-8 inputs for variables to serve as either initial or fixed values. (vector)
+%           List of 6-8 inputs for variables to serve as either initial or fixed values. (1D vector)
 %
 %   out_DIR: Full path to directory for outputs (string)
 %
 % Output Parameters
-%   models: A nvars by (nwalkers*nsteps/ThinChain) matrix with the thinned markov chains (vector)
+%   models: A nvars by (nwalkers*nsteps/ThinChain) matrix with the thinned markov chains (2D vector)
 %   names: array of names of fitting variables (character array)
 %
 % Author

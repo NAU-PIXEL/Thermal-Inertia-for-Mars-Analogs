@@ -14,17 +14,18 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
 %
 % Input Parameters
 %       k_dry_std: [W/mK] mean dry soil bulk thermal conductivity (vector)
-%       rho_dry: [kg/m^3] mean dry soil bulk density (vector)
-%       m: [unitless] pore-network-connectivity-parameter (vector)
-%       theta_k: [fraction by volume] conductivity soil moisture inflection point - in theory this should be similar to saturation value or porosity (vector)
-%       T_std: [deg K] Standard temperature; typically 300 (vector)
-%       T_deep: [deg C] bottom layer constant temperature (vector)
+%       rho_dry: [kg/m^3] mean dry soil bulk density (scalar)
+%       m: [unitless] pore-network-connectivity-parameter (scalar)
+%       theta_k: [0-1, fraction by volume] conductivity soil moisture
+%           inflection point - in theory this should be similar to saturation value or porosity (scalar)
+%       T_std: [deg K] Standard temperature; typically 300 (scalar)
+%       T_deep: [deg C] bottom layer constant temperature (scalar)
 %       surface_temperature_C: [deg C] Soil surface temperature (vector)
 %       layer_size: [m] array of thickness of subsurface grid layers (vector)
-%       dt: [s] time step (cector)
-%       VWC_column: [fraction by volume] volumetric water content measured at multiple depths (vector)
+%       dt: [s] time step (scalar)
+%       VWC_column: [fraction by volume] volumetric water content measured at multiple depths (2D vector)
 %       RH: [fraction] relative humidity of air (vector)
-%       NDAYS: [unitless] # of days to run equilib model for: More = closer to equilib, fewer = faster (vector)
+%       NDAYS: [unitless] # of days to run equilib model for: More = closer to equilib, fewer = faster (scalar)
 %       material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
 %
 % Outputs:
