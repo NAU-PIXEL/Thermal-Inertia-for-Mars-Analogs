@@ -1,20 +1,22 @@
 function [q_sensible,SHCoeff] = tima_sensible_heat_model(CH,windspeed_horiz,air_temp_K,T_surf_K)
-%***************
-% TIMA_SENSIBLE_HEAT_MODEL
+%% TIMA_SENSIBLE_HEAT_MODEL
 %   function to calculate sensible heat flux at the surface due to forced convection at a given timestep using a tunable aerodynamic method
 %
 % Syntax
 %   [q_sensible] = tima_sensible_heat_model(CH,windspeed_horiz,air_temp_K,T_surf_K)
 %
 % Inputs
-%   CH: resistance to sensible heat flux coefficient, similar to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2) (Unitless)
-%       1/CH should be 0.0028-0.0075 (or CH~100-400) for smooth to roughly open soils on Davenport Scale, CH is larger (more resistence) with rougher topography or larger vegetation
-%   windspeed_horiz: windspeed from tower height associated with derived CE (m/s)
-%   air_temp_K: air temperature from tower height associated with derived CE (K)
-%   T_surd_K: ground surface temperature at depth of interest (K)
+%   CH: [Unitless] resistance to sensible heat flux coefficient, similar to
+%       the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2)
+%       1/CH should be 0.0028-0.0075 (or CH~100-400) for smooth to roughly
+%       open soils on Davenport Scale, CH is larger (more resistence) with
+%       rougher topography or larger vegetation (scalar)
+%   windspeed_horiz: [m/s] windspeed from tower height associated with derived CE (scalar)
+%   air_temp_K: [K] air temperature from tower height associated with derived CE (scalar)
+%   T_surf_K: [K] ground surface temperature (scalar)
 %
 % Outputs
-%   q_sensible: sensible heat flux from evaporation (W/m^2)
+%   q_sensible: [W/m^2] sensible heat flux (scalar)
 %
 % Author
 %    Ari Koeppel, 2021

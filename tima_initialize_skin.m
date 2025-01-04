@@ -1,12 +1,14 @@
 function [temperature_column_K] = tima_initialize_skin(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS,material)
 %***************
-% TIMA_INITIALIZE
+% TIMA_INITIALIZE_SKIN
 %   Simple version of Heat tansfer model used to estimate a realistic subsurface 
-%   temperatures at start of model
-
+%   temperatures at start of model. The skin approach ultimately solves the
+%   upper boundary condition and balances energy fluxes at each time step
+%   by adjusting the skin temperature to control upwelling radiative flux.
+%
 % Syntax
-%   [temperature_column_C] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_deep,surface_temperature_C,dt,layer_size,VWC_column,VWC_depth_indices,RH,NDAYS)
-
+%   [temperature_column_C] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS)
+%
 % Description
 %   Script uses the measured surface temperature for 1 day on repeat as the forcing and then distrubutes heat
 %   This function uses observational data and assigned thermophysical properties 
@@ -24,7 +26,6 @@ function [temperature_column_K] = tima_initialize_skin(k_dry_std,rho_dry,m,theta
 %       layer_size: [m] array of thickness of subsurface grid layers (vector)
 %       dt: [s] time step (cector)
 %       VWC_column: [fraction by volume] volumetric water content measured at multiple depths (vector)
-%       VWC_depth_indices: [unitless] pointing array same size as "layer_size" indicating which row of "VWC_column" applies to each grid layer (vector size layer_size)
 %       RH: [fraction] relative humidity of air (vector)
 %       NDAYS: [unitless] # of days to run equilib model for: More = closer to equilib, fewer = faster (vector)
 %       material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
@@ -36,7 +37,8 @@ function [temperature_column_K] = tima_initialize_skin(k_dry_std,rho_dry,m,theta
 %    Ari Koeppel -- Copyright 2023
 %   
 % See also 
-%   TIMA_HEAT_TRANSFER TIMA_INITIALIZE TIMA_LATENT_HEAT_MODEL TIMA_LN_PRIOR TIMA_SENSIBLE_HEAT_MODEL TIMA_GWMCMC TIMA_COMBINE_ROWS
+%   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity. 
+%   tima_conductivity_model_lu2007.m tima_specific_heat_model_hillel.m
     % ***************    
     
     % ***************

@@ -1,23 +1,36 @@
 function [q_latent,soil_RH] = tima_latent_heat_model_VDG1985(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC,CH)
-% TIMA_LATENT_HEAT_MODEL_VDGG1985
-%   function to calculate latent heat flux due to evaporation in a given layer at a given timestep using a tunable aerodynamic method
+%% TIMA_LATENT_HEAT_MODEL_VDG1985
+%   function to calculate latent heat flux due to evaporation in a given
+%   layer at a given timestep using a tunable aerodynamic method from Van de Griend et al., 1985
+%   **This script is incomplete (Jan, 2025)**
 %
 % Syntax
-%   [q_latent,Soil_RH] = tima_latent_heat_model_VDG1985(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC,CH)
+%   [q_latent,Soil_RH] = tima_latent_heat_model_VDG1985(1000,0.2,1000,5,50,300,290,0.1,250)
 %
 % Inputs
-%   CE: resistance to latent heat flux coefficient, similar to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2) (Unitless)
-%   theta_E: latent heat soil moisture inflection point (fraction by Vol)
-%   pressure_air_Pa: station air pressure (Pa)
-%   windspeed_horiz: windspeed from tower height associated with derived CE (m/s)
-%   air_temp_K: air temperature from tower height associated with derived CE (K)
-%   T_ground_K: ground temperature at depth of interest (K)
-%   soil_VWC: soil volumetric water content at depth of interest (fraction by Vol)
-%   RH: relative humidity from tower height associated with derived CE (%)
+%   air_temp_K: [K] near surface air temperature, typically at 3 m AGL.
+%           (scalar)
+%   CE: [Unitless] resistance to latent heat flux coefficient, similar to the
+%       aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2)
+%       (scalar)
+%   CH: [Unitless] resistance to sensible heat flux coefficient,
+%           similar to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2)
+%           1/CH should be 0.0028-0.0075 (or CH~100-400) for smooth to
+%           roughly open soils on Davenport Scale, CH is larger (more
+%           resistence) with rougher topography or larger vegetation (scalar)
+%   pressure_air_Pa: [Pa] station pressure, typically at 3m AGL. (scalar)
+%   RH: [0-1] array of near surface relative humidity values,
+%           typically at 3m AGL. (scalar)
+%   soil_VWC: [0-1] soil volumetric water content at depth of interest (scalar)
+%   T_ground_K: [K] soil temperature at depth of interest (scalar)
+%   theta_E: [0-1, fraction by volume] latent heat soil moisture inflection
+%           point (scalar)
+%   windspeed_horiz: [m/s] Near surface horizontal wind speed,
+%           typically at 3m AGL. (scalar)
 %
 % Outputs
-%   q_latent: latent heat flux from evaporation (W/m^2)
-%   soil_RH: Theoretical "relative humidity" within soil (% by vol)
+%   q_latent: [W/m^2] latent heat flux from evaporation (scalar)
+%   soil_RH: [0-1] Theoretical "relative humidity" within soil (scalar)
 %
 % Author
 %    Ari Koeppel, 2021
@@ -56,26 +69,22 @@ function [q_latent,soil_RH] = tima_latent_heat_model_VDG1985(CE,theta_E,pressure
     q_air = Mv/Md*Pv/(pressure_air_Pa-(1-Mv/Md)*Pv); %kgh2o/kg dry_air, Specific Humidity Air
     q_sat_surf = Mv/Md*Psat_surf/(pressure_air_Pa-(1-Mv/Md)*Psat_surf); %kgh2o/kg dry_air, Specific Humidity Surf (saturation value at surf temp)
     if soil_VWC <= theta_E % theta_E is max amount a soil will hold if exposed to a constant mist, Mahfouf & Noilhan, 1991, Tran 2016 calls VWC_Sat the evaporation-rate reduction point
-        beta = 1/4*(1-cos(soil_VWC/theta_E*pi))^2; % beta is the resistence to evaporation resulting from changing water content
+        Rs = (theta_E-soil_VWC)*CE;
     else
-        beta = 1; %No resistence when saturated
+        Rs = 0;
     end
     if q_sat_surf<q_air
        soil_RH = RH; % Theoretical "relative humidity" within soil, Pct by vol, Lee & Pielke 1992 + Tran, 2016
     else
-       soil_RH = beta; % Theoretical "relative humidity" within soil, Pct by vol
+       soil_RH = 1; % saturated
     end
     Ra = (rho_air*Cp_air)/(CH*windspeed_horiz);
-    if Soil_VWC >= VWC_Sat
-        Rs = 0;
-    else
-        Rs = (VWC_Sat-Soil_VWC)*CE;%
-    end
+    %
 %     Rs = 3e10*(VWC_Sat-Soil_VWC)^16.6; %Daamen and Simmonds 1996
 %     Rs = -885+4140*(VWC_Sat-Soil_VWC);  %Soil_VWC in top 0.5 cm Camillo and Gurney 1986
 %     Rs = 3.5*(VWC_Sat/Soil_VWC)^2.3+33.5;%Fen Shu 1982 top 5 mm
 %     Rs = 10*exp(0.3565*(VWC_Sat-Soil_VWC));  %Soil_VWC in top 1 cm van de Griend and Owe 1994 + Tran 2016
-    Evap = rho_air*(SH_surf-SH_air)/(Ra + Rs);
+    Evap = rho_air*(q_sat_surf-q_air)/(Ra + Rs);
     q_latent = -L_H2O*Evap; %W/m^2, Latent heat flux
 
 end

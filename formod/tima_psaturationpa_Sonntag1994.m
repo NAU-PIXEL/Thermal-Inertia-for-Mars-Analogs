@@ -1,15 +1,15 @@
 function [Psat] = tima_psaturationpa_Sonntag1994(TempK)
-% TIMA_PSATURATIONPA_SONNTAG1994
+%% TIMA_PSATURATIONPA_SONNTAG1994
 %   function to saturation vapor pressure at a given temperature
 %
 % Syntax
 %   [Psat] = tima_PSaturationPa_Sonntag1994(TempK)
 %
 % Inputs
-%   TempK: temperature (K)
+%   TempK: [K] temperature (scalar)
 %
 % Outputs
-%   Psat: Saturation vapor pressure (Pa)
+%   Psat: [Pa] Saturation vapor pressure (scalar)
 %
 % Sources:
 %   Sonntag 1994

@@ -1,23 +1,31 @@
 function [q_latent,soil_RH,LHCoeff] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC)
-% TIMA_LATENT_HEAT_MODEL_LP1992
-%   function to calculate latent heat flux due to evaporation in a given layer at a given timestep using a tunable aerodynamic method
+%% TIMA_LATENT_HEAT_MODEL_LP1992
+%   function to calculate latent heat flux due to evaporation in a given
+%   soil layer at a given timestep using a tunable aerodynamic method from
+%   Lee & Pielke, 1992
 %
 % Syntax
-%   [q_latent,Soil_RH] = tima_latent_heat_model(CE,theta_E,pressure_air_Pa,windspeed_horiz,RH,air_temp_K,T_ground_K,soil_VWC)
+%   [q_latent,Soil_RH] = tima_latent_heat_model_LP1992(1000,0.2,1000,5,50,300,290,0.1)
 %
 % Inputs
-%   CE: resistance to latent heat flux coefficient, similar to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2) (Unitless)
-%   theta_E: latent heat soil moisture inflection point (fraction by Vol)
-%   pressure_air_Pa: station air pressure (Pa)
-%   windspeed_horiz: windspeed from tower height associated with derived CE (m/s)
-%   air_temp_K: air temperature from tower height associated with derived CE (K)
-%   T_ground_K: ground temperature at depth of interest (K)
-%   soil_VWC: soil volumetric water content at depth of interest (fraction by Vol)
-%   RH: relative humidity from tower height associated with derived CE (%)
+%   air_temp_K: [K] near surface air temperature, typically at 3 m AGL.
+%           (scalar)
+%   CE: [Unitless] resistance to latent heat flux coefficient, similar to the
+%       aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2)
+%       (scalar)
+%   pressure_air_Pa: [Pa] station pressure, typically at 3m AGL. (scalar)
+%   RH: [0-1] array of near surface relative humidity values,
+%           typically at 3m AGL. (scalar)
+%   soil_VWC: [0-1] soil volumetric water content at depth of interest (scalar)
+%   T_ground_K: [K] soil temperature at depth of interest (scalar)
+%   theta_E: [0-1, fraction by volume] latent heat soil moisture inflection
+%           point (scalar)
+%   windspeed_horiz: [m/s] Near surface horizontal wind speed,
+%           typically at 3m AGL. (scalar)
 %
 % Outputs
-%   q_latent: latent heat flux from evaporation (W/m^2)
-%   soil_RH: Theoretical "relative humidity" within soil (% by vol)
+%   q_latent: [W/m^2] latent heat flux from evaporation (scalar)
+%   soil_RH: [0-1] Theoretical "relative humidity" within soil (scalar)
 %
 % Author
 %    Ari Koeppel, 2021
