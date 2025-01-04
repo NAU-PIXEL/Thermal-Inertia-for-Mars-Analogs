@@ -8,9 +8,9 @@ Koeppel, A.H., Edwards, C.S., Edgar, L.A., Nowicki, S., Bennett, K.A., Gullikson
 The original implementation of the model was designed to derive a characteristic dry soil thermal conductivity at 300K. The procedure achieves this by inputing micrometeorological data into a surface energy balance forward model and adjusting thermal conductivity (along with 5 other modifying parameters) to fit surface skin temperature data (typically obtained through radiometer observation). Model updates have included multilayer paramtrizations, including consideration of subsurface ice. Thus, the model can be used to derive soil physical properties, layering and the depth to subsurface material transitions based entirely on surface temperature and weather observations.
 
 # Forward Model:
-  [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
+  [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,
+    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,
+    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,
     pressure_air_pa,varargin)
 
 # Forward Model Inputs:
