@@ -248,7 +248,7 @@ for i = 1:length(stability_array) %Loop to optimize layer thickness (i.e. highes
         FitVar(4),FitVar(5),FitVar(6),density,dt,T_std,Air_Temp_C,R_Short_Upper,...
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
         VWC_column,evap_depth.*ones(size(Air_Temp_C)),Humidity,emissivity,...
-        Pressure_air_Pa,Interpolated_Temp,'albedo',Albedo,'material',material,...
+        Pressure_air_Pa,'albedo',Albedo,'material',material,...
         'depth_transition',FitVar(7),'material_lower',material_lower,'mantle_thickness',mantle_thickness,'k_dry_std_mantle',k_dry_std_mantle);
 
     % %Need to make this fxn adjustable to dif modes (have it decide
@@ -338,7 +338,6 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       TData.TIMESTAMP = Data.TIMESTAMP;
       TData.temps_to_fit=Temps_to_fit;
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
-
       TData.temp_column = Dug_Temp;
 
 %   Model Data - Struct of static and model format variables

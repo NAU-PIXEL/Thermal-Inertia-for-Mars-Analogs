@@ -1,4 +1,4 @@
-function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+function [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
     pressure_air_pa,varargin)
@@ -7,10 +7,10 @@ function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 %   to estimate the temperature at the emitting surface of a 1D soil column through time.
 
 % Syntax
-%   [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+%   [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
 %    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
 %    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
-%    pressure_air_pa,'depth_transition',0.5)
+%    pressure_air_pa,'depth_transition',0.5,'k_dry_std_lower',1)
 %
 % Input Parameters ('single quotes' means optional varargin)
 %   Timeseries data
@@ -24,7 +24,7 @@ function [T_Surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 %           or r_short_upper that is diffuse. (1D vector)
 %       RH: [0-1] array of near surface relative humidity values,
 %           typically at 3m AGL. (1D vector)
-%       pressure_air_pa: Pa] station pressure, typically at 3m AGL. (1D vector)
+%       pressure_air_pa: [Pa] station pressure, typically at 3m AGL. (1D vector)
 %       r_long_upper: [W/m^2] Integrated longwave radiation  (4.5 to 42 μm) incident on flat
 %           surface.(1D vector)
 %       r_short_lower: [W/m^2] Integrated upwelling shortwave radiation (305 to 2800 nm) from flat
@@ -139,7 +139,6 @@ f_diff = p.f_diff;
 material = p.material;
 material_lower = p.material_lower;
 shadow_data = p.shadow_data;
-NDAYS = p.NDAYS;
 T_adj1 = p.T_adj1;if ~isempty(T_adj1), T_adj1(1) = T_adj1(1)/(dt/60);end
 T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 e_fxn = p.e_fxn;
@@ -318,10 +317,10 @@ for t = 2:length(air_temp_C)
         % end
     end
 end
-T_Surf_C = T(:,1) - 273.15;
-if any(~isreal(T_Surf_C)) || any(isnan(T_Surf_C))
+T_surf_C = T(:,1) - 273.15;
+if any(~isreal(T_surf_C)) || any(isnan(T_surf_C))
     fprintf('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
-    T_Surf_C(~isreal(T_Surf_C)) = -65535;
-    T_Surf_C(isnan(T_Surf_C)) = -65535;
+    T_surf_C(~isreal(T_surf_C)) = -65535;
+    T_surf_C(isnan(T_surf_C)) = -65535;
 end
 

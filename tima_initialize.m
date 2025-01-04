@@ -39,6 +39,7 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
 %   tima_conductivity_model_lu2007.m tima_specific_heat_model_hillel.m
     % ***************    
     p = inputParser;
+    p.KeepUnmatched=true;
     p.addParameter('material_lower',"basalt",@ischar);
     p.addParameter('depth_transition',sum(layer_size),@isnumeric);
     p.parse(varargin{:});

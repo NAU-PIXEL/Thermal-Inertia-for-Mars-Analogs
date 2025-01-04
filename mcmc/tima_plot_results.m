@@ -128,7 +128,7 @@ if size(RESULTS,2) == 6
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,'albedo',TData.timed_albedo,'material',MData.material);%'e_fxn',MData.e_fxn);
-     [Result_Temp_Surf,Result_Temp_Sub,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
+     [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
 elseif size(RESULTS,2) == 7
      formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -141,7 +141,7 @@ elseif size(RESULTS,2) == 7
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,'albedo',TData.timed_albedo,'material',MData.material,'depth_transition',FitVar(7),'material_lower',MData.material_lower);%'e_fxn',MData.e_fxn);
-     [Result_Temp_Surf,Result_Temp_Sub,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
+     [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
 elseif size(RESULTS,2) == 8
          formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -154,7 +154,7 @@ elseif size(RESULTS,2) == 8
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,'depth_transition',FitVar(7),'material_lower',MData.material_lower,'k_dry_std_lower',FitVar(8));%'e_fxn',MData.e_fxn);
-     [Result_Temp_Surf,Result_Temp_Sub,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
+     [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
 end
 
 if TwoSpot == true
@@ -163,7 +163,7 @@ if TwoSpot == true
             TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
             TData.VWC_II_column,TData.evap_depth_II,TData.humidity,MData.emissivity,...
             TData.pressure_air_Pa,'T_adj1',MData.T_adj1,'T_adj2',MData.T_adj2,'albedo',TData.timed_albedo_II);
-    [Result_Temp_Surf,Result_Temp_Sub,q_latent,Result_keff,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
+    [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
 end
 
 figure
@@ -179,7 +179,7 @@ else
 end
 set(F(1), 'edgecolor', 'none');
 set(F(1), 'FaceAlpha', 0.5);
-M = plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp_Surf((MData.fit_ind),1),'r', 'LineWidth', 2 ,'DisplayName','Surface Modeled');
+M = plot(TData.TIMESTAMP(MData.fit_ind),T_surf_C((MData.fit_ind),1),'r', 'LineWidth', 2 ,'DisplayName','Surface Modeled');
 
 hold off
 legend([F(2) M], 'Interpreter','none')
@@ -224,9 +224,9 @@ title('Sensible')
 figure
 hold on
 ylabel('W/mK');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_keff((MData.fit_ind),1),'r:', 'LineWidth', 1 ,'DisplayName','k_eff (layer 1)');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_keff((MData.fit_ind),2),'r', 'LineWidth', 1 ,'DisplayName','k_eff (layer 2)');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_keff((MData.fit_ind),end-1),'r--', 'LineWidth', 1 ,'DisplayName','k_eff (layer end-1)');
+plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),1),'r:', 'LineWidth', 1 ,'DisplayName','k_eff (layer 1)');
+plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),2),'r', 'LineWidth', 1 ,'DisplayName','k_eff (layer 2)');
+plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),end-1),'r--', 'LineWidth', 1 ,'DisplayName','k_eff (layer end-1)');
 hold off
 legend
 title('K_eff')
@@ -234,12 +234,12 @@ title('K_eff')
 figure
 hold on
 ylabel('W/mK');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp_Sub((MData.fit_ind),1),'k:', 'LineWidth', 1 ,'DisplayName','Layer 1');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp_Sub((MData.fit_ind),2),'k', 'LineWidth', 1 ,'DisplayName','Layer 2');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp_Sub((MData.fit_ind),3:end-3),'b', 'LineWidth', 0.25 ,'DisplayName','Middle Layers');
+plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),1),'k:', 'LineWidth', 1 ,'DisplayName','Layer 1');
+plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),2),'k', 'LineWidth', 1 ,'DisplayName','Layer 2');
+plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),3:end-3),'b', 'LineWidth', 0.25 ,'DisplayName','Middle Layers');
 plot(TData.TIMESTAMP(MData.fit_ind),TData.temp_column((MData.fit_ind),:),'g', 'LineWidth', 0.25 ,'DisplayName','Measured');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp_Sub((MData.fit_ind),end-2),'k-.', 'LineWidth', 1 ,'DisplayName','Layer end-2');
-plot(TData.TIMESTAMP(MData.fit_ind),Result_Temp_Sub((MData.fit_ind),end-1),'k--', 'LineWidth', 1 ,'DisplayName','Layer end-1');
+plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),end-2),'k-.', 'LineWidth', 1 ,'DisplayName','Layer end-2');
+plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),end-1),'k--', 'LineWidth', 1 ,'DisplayName','Layer end-1');
 hold off
 legend
 title('Temperature')
