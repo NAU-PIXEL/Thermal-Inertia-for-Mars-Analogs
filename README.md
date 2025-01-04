@@ -62,4 +62,4 @@ The original implementation of the model was to derive a characteristic soil the
 tima_plot_results(TData,MData,models,names,varargin)
 
 ## Input data:
-Example input files are located in the [`in`](hhttps://github.com/NAU-PIXEL/Thermal-Inertia-for-Mars-Analogs/tree/main/Example%20Data) folder.
+Example input files are located in the [`Example Data`](hhttps://github.com/NAU-PIXEL/Thermal-Inertia-for-Mars-Analogs/tree/main/Example%20Data) folder.
