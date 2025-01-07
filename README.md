@@ -14,8 +14,8 @@ The original implementation of the model was designed to derive a characteristic
     pressure_air_pa,varargin)
 
 # Forward Model Inputs:
-Input Parameters ('single quotes' means optional varargin)
-  Timeseries data
+## Input Parameters ('single quotes' means optional varargin)
+  ### Timeseries data
       air_Temp_C: [C] near surface air temperature, typically at 3 m AGL.
           (1D vector)
       'albedo': [0-1] time variant albedo (e.g., due to wetting) for
@@ -45,7 +45,7 @@ Input Parameters ('single quotes' means optional varargin)
       windspeed_horiz: [m/s] Near surface horizontal wind speed,
           typically at 3m AGL. (1D vector)
 
-  Constants:
+  ### Constants:
       'aspect_cwfromS': [degrees] slope aspect clockwise from South. (scalar)
       CE: [Unitless] resistance to latent heat flux coefficient, similar
           to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2) (scalar)
@@ -95,7 +95,7 @@ Input Parameters ('single quotes' means optional varargin)
   T_Surf_C = [C] Surface temperature time series (1D vector)
 
 # Fitting Process Input/Output Setup:
-  Time data - struct of timeseries data variables
+  ## Time data - struct of timeseries data variables
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
       TData.VWC_column=VWC_column;
@@ -114,7 +114,7 @@ Input Parameters ('single quotes' means optional varargin)
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
       TData.temp_column = Dug_Temp;
 
-   Model Data - Struct of static and model format variables
+   ## Model Data - Struct of static and model format variables
       MData.burnin_fit=burnin_fit;
       MData.burnin_mcmc=burnin_mcmc;
       MData.dt=dt;  
