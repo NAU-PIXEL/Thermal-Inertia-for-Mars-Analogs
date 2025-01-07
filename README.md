@@ -8,12 +8,11 @@ Koeppel, A.H., Edwards, C.S., Edgar, L.A., Nowicki, S., Bennett, K.A., Gullikson
 The original implementation of the model was designed to derive a characteristic dry soil thermal conductivity at 300K. The procedure achieves this by inputing micrometeorological data into a surface energy balance forward model and adjusting thermal conductivity (along with 5 other modifying parameters) to fit surface skin temperature data (typically obtained through radiometer observation). Model updates have included multilayer paramtrizations, including consideration of subsurface ice. Thus, the model can be used to derive soil physical properties, layering and the depth to subsurface material transitions based entirely on surface temperature and weather observations.
 
 # Forward Model:
-  [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,
-    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,
-    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,
+  [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
+    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
     pressure_air_pa,varargin)
 
-# Forward Model Inputs:
 ## Input Parameters ('single quotes' means optional varargin)
   ### Timeseries data
       air_Temp_C: [C] near surface air temperature, typically at 3 m AGL.
@@ -91,11 +90,17 @@ The original implementation of the model was designed to derive a characteristic
           column temperature change at a given time point due to wetting
           (1D vector)
 
-# Forward Model Output Parameters:
-  T_Surf_C = [C] Surface temperature time series (1D vector)
+## Output Parameters:
+    T_Surf_C = [C] Surface temperature time series (1D vector)
+    T_sub_C = [C] Suburface temperature time series for all layers (2D vector)
+    q_latent = [W/m^2] Latent heat flux time series for all layers (2D vector)
+    k_eff_dt = [W/mK] Effective thermal conductivity time series for all layers (2D vector)
+    q_conv = [W/m^2] Surface sensible heat flux time series (1D vector)
+    q_rad = [W/m^2] Surface radiative heat flux time series (1D vector)
+    q_G = [W/m^2] Heat flux between top and second subsurface layer time series (1D vector)
 
 # Fitting Process Input/Output Setup:
-  ## Time data - struct of timeseries data variables
+  ### Time data - struct of timeseries data variables
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
       TData.VWC_column=VWC_column;
@@ -114,7 +119,7 @@ The original implementation of the model was designed to derive a characteristic
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
       TData.temp_column = Dug_Temp;
 
-   ## Model Data - Struct of static and model format variables
+   ### Model Data - Struct of static and model format variables
       MData.burnin_fit=burnin_fit;
       MData.burnin_mcmc=burnin_mcmc;
       MData.dt=dt;  
