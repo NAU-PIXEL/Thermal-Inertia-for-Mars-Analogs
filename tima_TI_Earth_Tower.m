@@ -18,6 +18,10 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer','Parallel',true,'SaveModels',true)
 %
 % varargin options:
+%   'IncreaseSampling': Option to increase sampling rate if model does not
+%       converge (default=false) (logical)
+%   'Initialize': Option to reinitialize subsurface temperatures for run. Increases compute time, 
+%       but avoids dramatic shifts with param optimization leading to instability. (default=false) (logical)
 %   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
 %       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
 %       layer and the transition depth) (default='1layer') (string)
@@ -33,8 +37,6 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %       TData.DF: [decimal fraction] Fraction of  Global Horizontal Irradiance (GHI)
 %           or r_short_upper that is diffuse (1D vector)
 %       TData.evap_depth: [m] Depth of the evaporation front. (1D vector)
-%       TData.temps_to_fit: [C] Surface temperature values to be used for
-%           fitting. (1D vector)
 %       TData.temps_to_fit_interp: [C] Surface temperature values to be used for
 %           fitting with any data gaps filled in. (1D vector)
 %       TData.timed_albedo: [decimal fraction] time variant albedo (e.g.,
@@ -71,7 +73,7 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %       MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
 %           range of sensor. (scalar)
 %       MData.erf: Uncertainty as function of observed temperature (function_handle)
-%       MData.fit_ind: Indecies of temps_to_fit in which to apply fitting
+%       MData.fit_ind: Indecies of temps_to_fit_interp in which to apply fitting
 %           to (scalar)
 %       MData.layer_size: [m] List of vertical thickness for each layer
 %           from top to bottom. (1D vector)
@@ -130,19 +132,25 @@ p.addRequired('outDIR',@ischar);
 p.addParameter('Mode','1layer',@ischar);
 p.addParameter('Parallel',false,@islogical);
 p.addParameter('SaveModels',false,@islogical);
+p.addParameter('IncreaseSampling',false,@islogical);
+p.addParameter('Initialize',false,@islogical);
 p.parse(TData, MData, outDIR, varargin{:});
 p=p.Results;
 Mode = p.Mode;
 Parallel= p.Parallel;
 SaveModels = p.SaveModels;
 MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
+initialize = p.Initialize;
+increase_sampling = p.IncreaseSampling;
 
 if strcmp(Mode,'1layer')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,...
+        'material',MData.material,'mantle_thickness',MData.mantle_thickness,...
+        'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
     MData.minit = MData.minit(1:6,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75];
@@ -153,7 +161,7 @@ elseif strcmp(Mode,'2layer')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',FitVar(7),...
         'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
     MData.minit = MData.minit(1:8,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024 0];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7 5];
@@ -164,7 +172,7 @@ elseif strcmp(Mode,'2layer_fixed_depth') % This won't work with MCMC in the set 
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',...
         MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
     MData.minit = MData.minit([1:6 8],:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7];
@@ -175,7 +183,7 @@ elseif strcmp(Mode,'2layer_fixed_lower')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
         'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
     MData.minit = MData.minit(1:7,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 5];
@@ -183,7 +191,7 @@ else
     error('Mode entered does not match available options.')
 end
 %% Optimiztion
-optimize_MCMC = 0; %Option to use MCMC or Surrogate Opt
+optimize_MCMC = 1; %Option to use MCMC or Surrogate Opt
 if optimize_MCMC == 1
     k_air = 0.024; % Tsilingiris 2008
     k_H2O = 0.61;

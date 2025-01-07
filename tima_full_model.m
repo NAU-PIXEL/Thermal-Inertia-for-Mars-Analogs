@@ -13,6 +13,12 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 %    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
 %    pressure_air_pa,Observed_Temperatures,NDAYS,'depth_transition',0.5)
 %
+% varargin options:
+%   'IncreaseSampling': Option to increase sampling rate if model does not
+%       converge (default=false) (logical)
+%   'Initialize': Option to reinitialize subsurface temperatures for run. Increases compute time, 
+%       but avoids dramatic shifts with param optimization leading to instability. (default=false) (logical)
+%
 % Input Parameters ('single quotes' means optional varargin)
 %   Timeseries data
 %       air_Temp_C: [C] near surface air temperature, typically at 3 m AGL.
@@ -38,7 +44,8 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 %           clockwise from South, typically -180:180 or 0:360 (1D vector)
 %       'solar_zenith_apparent': [degrees] Solar zenith in degrees,
 %           corrected for atmospheric refraction. (1D vector)
-%       T_surf_obs_C:
+%       T_surf_obs_C: [C] Surface temperature values to be used for
+%           initialization with any data gaps filled in. (1D vector)
 %       VWC_column: [0-1, decimal fraction by volume] array of volumetric water content
 %           for each model layer with each time step, typically
 %           interpolated. (2D vector)
@@ -97,19 +104,28 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 % Author
 %    Ari Koeppel -- Copyright 2025
 % ***************
-increase_sampling = 1; % option to increase sampling rate if model does not converge
+p = inputParser;
+p.KeepUnmatched=true;
+% option to increase sampling rate if model does not converge
+p.addParameter('increase_sampling',false,@islogical);
+% option to reinitialize subsurface temperatures for run. Increases compute time, 
+% but avoids dramatic shifts with param optimization leading to instability
+p.addParameter('initialize',false,@islogical);
+p.parse(varargin{:});
+p=p.Results;
 
-
-Subsurface_Temperatures = tima_initialize(k_dry_std_upper,rho_dry_upper,m,...
+if p.initialize
+    Subsurface_Temperatures = tima_initialize(k_dry_std_upper,rho_dry_upper,m,...
     theta_k,T_std,T_deep,T_surf_obs_C,dt,layer_size,VWC_column,RH,NDAYS,material,varargin{:});
-T_Start(:) = Subsurface_Temperatures(end,end,:);
-T_Start(1) = T_surf_obs_C(1)+273.15;
+    T_Start(:) = Subsurface_Temperatures(end,end,:);
+    T_Start(1) = T_surf_obs_C(1)+273.15;
+end
 [T_surf_C,~,~,~,~,~,~] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,...
         r_short_lower,r_long_upper,windspeed_horiz,T_deep,T_Start,layer_size,...
         VWC_column,evap_depth,RH,emissivity,...
          pressure_air_pa,varargin{:});
 
-if any(T_surf_C==-65535) && increase_sampling == 1
+if any(T_surf_C==-65535) && p.increase_sampling
     time_orig = dt.*(0:1:length(air_temp_C)-1);
     dt = 10;
     time_new = 0:dt:max(time_orig);

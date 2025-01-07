@@ -95,7 +95,13 @@ function [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_trans
 %           (1D vector)
 %
 % Output Parameters:
-%   T_Surf_C = Surface temperature time series (deg C)
+%   T_Surf_C = [C] Surface temperature time series (1D vector)
+%   T_sub_C = [C] Suburface temperature time series for all layers (2D vector)
+%   q_latent = [W/m^2] Latent heat flux time series for all layers (2D vector)
+%   k_eff_dt = [W/mK] Effective thermal conductivity time series for all layers (2D vector)
+%   q_conv = [W/m^2] Surface sensible heat flux time series (1D vector)
+%   q_rad = [W/m^2] Surface radiative heat flux time series (1D vector)
+%   q_G = [W/m^2] Heat flux between top and second subsurface layer time series (1D vector)
 %
 % Author
 %    Ari Koeppel -- Copyright 2023
@@ -110,6 +116,7 @@ function [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_trans
 %      
 % ***************
 p = inputParser;
+p.KeepUnmatched=true;
 p.addRequired('r_short_lower',@(x)all(x>=0) && isnumeric(x));
 p.addRequired('r_short_upper',@(x)all(x>=0) && isnumeric(x));
 p.addParameter('k_dry_std_lower',k_dry_std_upper,@isnumeric);
