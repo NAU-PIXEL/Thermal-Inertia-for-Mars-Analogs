@@ -112,11 +112,11 @@ function [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_trans
 p = inputParser;
 p.addRequired('r_short_lower',@(x)all(x>=0) && isnumeric(x));
 p.addRequired('r_short_upper',@(x)all(x>=0) && isnumeric(x));
-p.addOptional('k_dry_std_lower',k_dry_std_upper,@isnumeric);
-p.addOptional('depth_transition',sum(layer_size),@isnumeric);
-p.addOptional('rho_dry_lower',rho_dry_upper,@isnumeric);
-p.addOptional('mantle_thickness',0,@isnumeric);
-p.addOptional('k_dry_std_mantle',k_dry_std_upper,@isnumeric);
+p.addParameter('k_dry_std_lower',k_dry_std_upper,@isnumeric);
+p.addParameter('depth_transition',sum(layer_size),@isnumeric);
+p.addParameter('rho_dry_lower',rho_dry_upper,@isnumeric);
+p.addParameter('mantle_thickness',0,@isnumeric);
+p.addParameter('k_dry_std_mantle',k_dry_std_upper,@isnumeric);
 p.addParameter('material',"basalt",@ischar);
 p.addParameter('material_lower',"basalt",@ischar);
 p.addParameter('albedo',[],@isnumeric);

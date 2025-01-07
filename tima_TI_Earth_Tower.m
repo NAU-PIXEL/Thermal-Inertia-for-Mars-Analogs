@@ -21,8 +21,6 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
 %       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
 %       layer and the transition depth) (default='1layer') (string)
-%   'TwoSpot': Option to simultaneously fit two different sets of surface temperatures
-%       with the same parameters (default=false) (logical)
 %   'Parallel': Run in ensemble of walkers in parallel. (default=false)
 %       (logical)
 %   'SaveModels': Option to save the models output to a .mat file
@@ -129,13 +127,11 @@ p = inputParser;
 p.addRequired('TData',@isstruct);
 p.addRequired('MData',@isstruct);
 p.addRequired('outDIR',@ischar);
-p.addParameter('TwoSpot',false,@islogical);
 p.addParameter('Mode','1layer',@ischar);
 p.addParameter('Parallel',false,@islogical);
 p.addParameter('SaveModels',false,@islogical);
 p.parse(TData, MData, outDIR, varargin{:});
 p=p.Results;
-TwoSpot = p.TwoSpot;
 Mode = p.Mode;
 Parallel= p.Parallel;
 SaveModels = p.SaveModels;
@@ -148,6 +144,8 @@ if strcmp(Mode,'1layer')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
     MData.minit = MData.minit(1:6,:);
+    MData.lbound = [0.024 0.01 1 1 0.05 0.01];
+    MData.ubound = [3.7 1.3 1000 10000 0.9 0.75];
 elseif strcmp(Mode,'2layer')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -157,7 +155,9 @@ elseif strcmp(Mode,'2layer')
         'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
             'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
     MData.minit = MData.minit(1:8,:);
-elseif strcmp(Mode,'2layer_fixed_depth')
+    MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024 0];
+    MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7 5];
+elseif strcmp(Mode,'2layer_fixed_depth') % This won't work with MCMC in the set up in ln prior right now
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
@@ -166,6 +166,8 @@ elseif strcmp(Mode,'2layer_fixed_depth')
         MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
             'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
     MData.minit = MData.minit([1:6 8],:);
+    MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024];
+    MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7];
 elseif strcmp(Mode,'2layer_fixed_lower')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -175,11 +177,13 @@ elseif strcmp(Mode,'2layer_fixed_lower')
         'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
             'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
     MData.minit = MData.minit(1:7,:);
+    MData.lbound = [0.024 0.01 1 1 0.05 0.01 0];
+    MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 5];
 else
     error('Mode entered does not match available options.')
 end
 %% Optimiztion
-optimize_MCMC = 1; %Option to use MCMC or Surrogate Opt
+optimize_MCMC = 0; %Option to use MCMC or Surrogate Opt
 if optimize_MCMC == 1
     k_air = 0.024; % Tsilingiris 2008
     k_H2O = 0.61;
@@ -232,9 +236,9 @@ if optimize_MCMC == 1
     TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
     TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 else
-    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',p.Parallel,'MaxFunctionEvaluations',MData.nstep);
+    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Parallel,'MaxFunctionEvaluations',MData.nstep);
     Obj = @(theta) tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(theta,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
-    problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts,'PlotFcn',[]) ; 
+    problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts) ; 
     [RESULTS_holder,fval] = surrogateopt(problem);
     RESULTS(:) = RESULTS_holder';
     Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
@@ -253,11 +257,7 @@ fid = fopen(fullfile(outDIR, fname), 'wt');
 if fid == -1
   error('Cannot open log file.');
 end
-if TwoSpot == true
-    fprintf(fid,'1D thermal model results considering two locations (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
-else
-    fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
-end
+fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
 fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1));
 for i = 1:MData.nvars
     fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));

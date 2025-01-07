@@ -97,7 +97,7 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 % Author
 %    Ari Koeppel -- Copyright 2025
 % ***************
-increase_sampling = 0; % option to increase sampling rate if model does not converge
+increase_sampling = 1; % option to increase sampling rate if model does not converge
 
 
 Subsurface_Temperatures = tima_initialize(k_dry_std_upper,rho_dry_upper,m,...
