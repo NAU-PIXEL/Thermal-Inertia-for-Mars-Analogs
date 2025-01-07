@@ -1,14 +1,7 @@
-%TI_Earth_1D_MCMC.m
+%Prep_For_TIMA_SmallWxData.m
 % Ari Koeppel -- Copyright 2021
-%Script to model thermal inertia in terrestrial sediments using diurnal 
-%observations taken in the field fit to multi-parameter model using MCMC 
-%simulations. This model applies to one point/pixel (1D).
+%Script to prepare inputs for heat transfer modeling.
 
-%Justification for approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
-%SURROGATE OPTIMIZATION IS USEFUL FOR TESTING
-%MCMC IS USEFUL FOR OBTAINING UNCERTAINTY ON TI/k results
-
-%References: Kieffer, 2013, 
 
 %% Clear Workspace
 clc;
@@ -53,8 +46,7 @@ end
 
 observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
 mask = isnan(Orig_Temps_to_Fit);
-% starts = [mask(1); (diff(mask)>0)];
-% stops = [(diff(mask)<0);~mask(end)];
+
 
 %% Measured by Hand
 [AddlInputs, AIPath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\IcelandEmergingEsker2022_10cm\Additional_Inputs.txt','Select txt file containing density, emissivity, material and max depth inputs');
@@ -117,33 +109,37 @@ t_step = Addldata{27}; %minutes
 mantle_thickness = Addldata{28}; %minutes
 k_dry_std_mantle = Addldata{29};
 %% Resample
-if t_step == 1
+%Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
+if t_step >= 1
     Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
-    fit_ind = isnan(Data.LWLowerCo_Avg);
-    fit_ind = find(fit_ind==0);
-elseif t_step > 1
-    Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
-    fit_ind = isnan(Data.LWLowerCo_Avg);
-    fit_ind = find(fit_ind==0);
+    if strcmp('LWLowerCo_Avg',selectedVariableName) || strcmp('LWLowerCo',selectedVariableName)
+        Temps_to_Fit = (Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
+        erf = @(T) 5.*ones(length(T));
+        err = erf(Data.LWLowerCo_Avg);
+    else
+        Temps_to_fit = Data.(selectedVariableName);    % Get the values of the selected variable
+        erf = @(T) (0.002.*(273.15+T)+0.20);
+        err = erf(Temps_to_fit); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
+    end
+    fit_ind = find(~isnan(Temps_to_fit));
+
 else
     Data = retime(Data_orig,'regular','pchip','TimeStep',minutes(t_step));
+    if strcmp('LWLowerCo_Avg',selectedVariableName) || strcmp('LWLowerCo',selectedVariableName)
+        Temps_to_Fit = (Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
+        erf = @(T) 5.*ones(length(T));
+        err = erf(Data.LWLowerCo_Avg);
+    else
+        Temps_to_fit = Data.(selectedVariableName);    % Get the values of the selected variable
+        erf = @(T) (0.002.*(273.15+T)+0.20);
+        err = erf(Temps_to_fit); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
+    end
     observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
     mask = isnan(Orig_Temps_to_Fit);
     observed_TT(mask,:) = [];
     for times = 1:size(observed_TT,1)
         [~,fit_ind(times)] = min(abs(datenum(Data.TIMESTAMP)-datenum(observed_TT.Time(times))));
     end
-end
-% ***************
-%Prompt user to select a variable from the table
-if strcmp('LWLowerCo_Avg',selectedVariableName) || strcmp('LWLowerCo',selectedVariableName)
-    Temps_to_Fit = (Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
-    erf = @(T) 5.*ones(length(T));
-    err = erf(Data.LWLowerCo_Avg);
-else
-    Temps_to_fit = Data.(selectedVariableName);    % Get the values of the selected variable
-    erf = @(T) (0.002.*(273.15+T)+0.20);
-    err = erf(Temps_to_fit); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
 end
 %Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
 testvarnames = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)', 'Transition Depth (m)'};
@@ -195,7 +191,7 @@ WindSpeed_ms_10 = Data.WS_ms_Avg; % Wind Speed from sensor @ ~10 ft (3 m) height
 WindSpeed_ms_10_smooth = smoothdata(WindSpeed_ms_10,'gaussian',Smooth_Window); %wind is noisy, so this smoothes it
 
 %% Routine to set up boundary and initial conditions for model
-FLAY = 0.005;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
+FLAY = 0.0075;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
 
 % ***************
 clear T_Test
@@ -316,7 +312,7 @@ hold off
 xlabel('Time (hr)');
 ylabel('Surface Temperature (C)');
 legend([G,H,F,M(1),M(2)],'Interpreter','none')
-chi_v_test = sum((Temps_to_fit-Test_Result).^2./err.^2)/(length(Temps_to_fit)-nvars); %reduced chi squared
+chi_v_test = sum((Temps_to_fit(fit_ind)-Test_Result(fit_ind)).^2./err(fit_ind).^2)/(length(Temps_to_fit(fit_ind))-nvars); %reduced chi squared
 ttl = sprintf('TI top = %0.2f Jm^{-2}K^{-1}s^{-1/2}, chi^{2} = %0.2f', sqrt(Vars_init(1)*Cp_Deep*density),chi_v_test);%Calculate TI from results
 title(ttl,'Interpreter','tex','FontName','Ariel')
 

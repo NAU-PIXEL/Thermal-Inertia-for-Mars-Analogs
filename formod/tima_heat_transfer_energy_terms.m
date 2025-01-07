@@ -321,7 +321,7 @@ q_rad(1)=q_rad(2);
 T_surf_C = T(:,1) - 273.15;
 T_sub_C = T(:,2:end)-273.15;
 if any(~isreal(T_surf_C)) || any(isnan(T_surf_C))
-    fprintf('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
+    fprintf('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f \n',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
     T_surf_C(~isreal(T_surf_C)) = -65535;
     T_surf_C(isnan(T_surf_C)) = -65535;
 end

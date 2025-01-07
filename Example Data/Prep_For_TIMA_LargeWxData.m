@@ -1,15 +1,6 @@
-%TI_Earth_1D_MCMC.m
+%Prep_For_TIMA_LargeWxData.m
 % Ari Koeppel -- Copyright 2021
-%Script to model thermal inertia in terrestrial sediments using diurnal 
-%observations taken in the field fit to multi-parameter model using MCMC 
-%simulations. This model applies to one point/pixel (1D).
-
-%Justification for approach: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
-%SURROGATE OPTIMIZATION IS USEFUL FOR TESTING
-%MCMC IS USEFUL FOR OBTAINING UNCERTAINTY ON TI/k results
-
-%References: Kieffer, 2013, 
-
+%Script to prepare inputs for heat transfer modeling.
 %% Clear Workspace
 clc;
 clear
@@ -22,11 +13,12 @@ format compact; format longG;
 %Find and load a .mat file with data already synchronized and
 %clipped to the proper time window. See script: PSTAR_Data_Integration_SunsetMay2021_Moving.m
 % Retrieve data file path name
-[LogFile, LogFilePath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\IcelandEmergingEsker2022_10cm\EmergingEsker2022_LoggerData.mat','Select data file containing micrometeorological and thermal data'); %## prompt for log
+[LogFile, LogFilePath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\Woodhouse2022\WoodhouseSept2022_AllData_wSolar_Cropped_UpdatedCalibration_TrueFLIRData_wIrradiance.mat','Select data file containing micrometeorological and thermal data'); %## prompt for log
 % ***************
 
 % ***************
 %Load data
+
 Data_orig = struct2cell(load(fullfile(LogFilePath, LogFile)));
 Data_orig = Data_orig{:,:};
 variableNames = Data_orig.Properties.VariableNames;
@@ -53,11 +45,10 @@ end
 
 observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
 mask = isnan(Orig_Temps_to_Fit);
-% starts = [mask(1); (diff(mask)>0)];
-% stops = [(diff(mask)<0);~mask(end)];
+% ***************
 
 %% Measured by Hand
-[AddlInputs, AIPath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\IcelandEmergingEsker2022_10cm\Additional_Inputs.txt','Select txt file containing density, emissivity, material and max depth inputs');
+[AddlInputs, AIPath] = uigetfile('X:\akoeppel\TI_Modeling\TI_Earth_2D\Woodhouse2022\Additional_Inputs.txt','Select txt file containing density, emissivity, material and max depth inputs');
 fileID = fopen(fullfile(AIPath,AddlInputs), 'r');
 if fileID == -1
     error('Could not open file: %s', filename);
@@ -91,42 +82,56 @@ emissivity = Addldata{2};
 T_std = Addldata{3};
 material = Addldata{4};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
 material_lower = Addldata{5};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
-Depth_Max = Addldata{6};%m
-evap_depth = Addldata{7}; %Static evap depth (0.075 is reasonable for unsaturated sandy soils)
-VWC_dug_depth = [Addldata{8},Addldata{9},Addldata{10},Addldata{11}]./100; %Depth in m of probe elements
-Vars_init = [Addldata{12};Addldata{13};Addldata{14};Addldata{15};Addldata{16};Addldata{17};Addldata{18};Addldata{19}];
-% Check if the input materialType is valid
-if ~ismember(material, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'})
+if ~ismember(material, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'}) || ~ismember(material_lower, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'})
     error('Error: The material type "%s" is not valid. Please choose from: %s', ...
           materialType, strjoin(validMaterials, ', '));
 end
-% Simulation Parameters
-NDAYS = Addldata{20};
-nwalkers = Addldata{21}; %100
-nstep = Addldata{22}; %10000
-burnin_mcmc = Addldata{23}; %fraction of results to omit
-burnin_fit = Addldata{24}; %fraction of results to omit
-sigma = Addldata{25}; % dictates sinsitivity of walkers to change
-nvars = Addldata{26};
+Depth_Max = Addldata{6};%m
+evap_depth = Addldata{7}; %Static evap depth (0.075 is reasonable for unsaturated sandy soils)
+Vars_init = [Addldata{8};Addldata{9};Addldata{10};Addldata{11};Addldata{12};Addldata{13};Addldata{14};Addldata{15}];
+mantle_thickness = Addldata{16}; %minutes
+k_dry_std_mantle = Addldata{17};
+t_step = Addldata{18}; %minutes
+NDAYS = Addldata{19};
+nwalkers = Addldata{20}; %100
+nstep = Addldata{21}; %10000
+burnin_mcmc = Addldata{22}; %fraction of results to omit
+burnin_fit = Addldata{23}; %fraction of results to omit
+sigma = Addldata{24}; % dictates sinsitivity of walkers to change
+nvars = Addldata{25};
 minit = zeros(length(Vars_init),nwalkers);
 rng(49)  % For reproducibility
 for i = 1:nwalkers
     minit(:,i) = Vars_init + sigma*Vars_init.*randn(length(Vars_init),1);
 end
-t_step = Addldata{27}; %minutes
-mantle_thickness = Addldata{26}; %minutes
-k_dry_std_mantle = Addldata{27};
+VWC_dug_depth = [Addldata{26},Addldata{27},Addldata{28},Addldata{29},Addldata{30},Addldata{31},Addldata{32}]./100; %Depth in m of probe elements
+
 %% Resample
-if t_step == 1
+%Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
+if t_step >= 1
     Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
-    fit_ind = isnan(Data.LWLowerCo_Avg);
-    fit_ind = find(fit_ind==0);
-elseif t_step > 1
-    Data = retime(Data_orig,'regular','mean','TimeStep',minutes(t_step),'EndValues',NaN);
-    fit_ind = isnan(Data.LWLowerCo_Avg);
-    fit_ind = find(fit_ind==0);
+    if strcmp('LWLowerCo_Avg',selectedVariableName) || strcmp('LWLowerCo',selectedVariableName)
+        Temps_to_Fit = (Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
+        erf = @(T) 5.*ones(length(T));
+        err = erf(Data.LWLowerCo_Avg);
+    else
+        Temps_to_fit = Data.(selectedVariableName);    % Get the values of the selected variable
+        erf = @(T) (0.002.*(273.15+T)+0.20);
+        err = erf(Temps_to_fit); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
+    end
+    fit_ind = find(~isnan(Temps_to_fit));
+
 else
     Data = retime(Data_orig,'regular','pchip','TimeStep',minutes(t_step));
+    if strcmp('LWLowerCo_Avg',selectedVariableName) || strcmp('LWLowerCo',selectedVariableName)
+        Temps_to_Fit = (Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
+        erf = @(T) 5.*ones(length(T));
+        err = erf(Data.LWLowerCo_Avg);
+    else
+        Temps_to_fit = Data.(selectedVariableName);    % Get the values of the selected variable
+        erf = @(T) (0.002.*(273.15+T)+0.20);
+        err = erf(Temps_to_fit); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
+    end
     observed_TT = timetable(Data_orig.TIMESTAMP,Orig_Temps_to_Fit);
     mask = isnan(Orig_Temps_to_Fit);
     observed_TT(mask,:) = [];
@@ -134,18 +139,8 @@ else
         [~,fit_ind(times)] = min(abs(datenum(Data.TIMESTAMP)-datenum(observed_TT.Time(times))));
     end
 end
-% ***************
-%Prompt user to select a variable from the table
-if strcmp('LWLowerCo_Avg',selectedVariableName) || strcmp('LWLowerCo',selectedVariableName)
-    Temps_to_Fit = (Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15; %(Data.LWLowerCo_Avg./5.670374419e-8).^0.25-273.15
-    erf = @(T) 5.*ones(length(T));
-    err = erf(Data.LWLowerCo_Avg);
-else
-    Temps_to_fit = Data.(selectedVariableName);    % Get the values of the selected variable
-    erf = @(T) (0.002.*(273.15+T)+0.20);
-    err = erf(Temps_to_fit); %Accuracy is 0.05K after calibration; CS240 Accuracy ± (0.15 + 0.002T)K TO ADD: DIF in temp between back of CS240 and top% err = (0.05.*(Temps_to_fit)); %5% or 5K before;
-end
-%Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
+
+
 testvarnames = {'k-upper' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)', 'Transition Depth (m)'};
 StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start for model top layer
 % ***************
@@ -153,7 +148,8 @@ StartTemp_1 = 273.15+Temps_to_fit(1); %Use first observed temperature as start f
 dt = seconds(Data.TIMESTAMP(2)-Data.TIMESTAMP(1));
 Smooth_Window = 25/(dt/60); %Calculate a reasonable smoothing window for jumpy data (i.e. wind, VWC)
 % ***************
-%% ***************
+
+%% Extracting Variables***************
 TT = timetable(Data.TIMESTAMP,Temps_to_fit);
 Interpolated_Temp = fillmissing(TT,'linear');
 Interpolated_Temp=Interpolated_Temp{:,1};
@@ -172,30 +168,40 @@ if ~ismember('AirTC', Data.Properties.VariableNames);Data.AirTC = Data.AirTC_Avg
 Air_Temp_C = Data.AirTC; %Air Temp
 Humidity = Data.RH./100; %Rel humid
 Pressure_air_Pa = Data.BP_mbar.*100; %barometric pressure - converted to Pa later on
+if ~ismember('T_Avg', Data.Properties.VariableNames);Data.T_Avg = Data.SoilTemp3;end
 Soil_Temp_C_Probe = Data.T_Avg; %In Situ near surf Soil Temperature from nearest Dry probe
 Dewpoint_C = (243.04.*log(Humidity)+17.625.*Air_Temp_C./(243.04+Air_Temp_C))./(17.625-log(Humidity./100)+17.625.*Air_Temp_C./(243.04+Air_Temp_C));
 SolarAzimuthCwfromS = 180 - Data.SolarAzimuthAngledegCwFromN;
 f_diff = Data.DF;
 SolarZenith_Apparent = 90-Data.SolarElevationCorrectedForAtmRefractiondeg;
 clear Dug_VWC Dug_Temp
-Dug_VWC(:,1) = Data.VWC_Avg;
-Dug_VWC(:,2) = Data.VWC_2_Avg;
-Dug_VWC(:,3) = Data.VWC_3_Avg;
-Dug_Temp(:,1) = Data.T_Avg; %In Situ near surf Soil Temperature from nearest probe
-Dug_Temp(:,2) = Data.T_2_Avg; %In Situ near surf Soil Temperature from nearest probe
-Dug_Temp(:,3) = Data.T_3_Avg; %In Situ near surf Soil Temperature from nearest probe
-if ismember('VWC_4_Avg',Data.Properties.VariableNames)
-    Dug_VWC(:,4) = Data.VWC_4_Avg;
-    Dug_Temp(:,4) = Data.T_4_Avg; %In Situ near surf Soil Temperature from nearest probe
-end
 VWC_Smooth_Window = 50/(dt/60);
+Dug_VWC(:,1) = Data.VWC3;%Data.VWC3; %In Situ near surf Soil Moisture from nearest DRY probe
+Dug_VWC(:,2) = Data.VWC_53;
+Dug_VWC(:,3) = Data.VWC_103;
+Dug_VWC(:,4) = Data.VWC_203;
+Dug_VWC(:,5) = Data.VWC_303;
+Dug_VWC(:,6) = Data.VWC_403;
+Dug_VWC(:,7) = Data.VWC_503;
+Dug_VWC_smooth = smoothdata(Dug_VWC,'gaussian',VWC_Smooth_Window);
+SoilVWC_smooth = smoothdata(Data.VWC3,'gaussian',Smooth_Window); %VWC is discretized, so this smoothes it
+Dug_VWC_smooth(:,1) = SoilVWC_smooth;
+Dug_Temp(:,1) = Data.SoilTemp3; %In Situ near surf Soil Temp from nearest DRY probe
+Dug_Temp(:,2) = Data.Temp_53;
+Dug_Temp(:,3) = Data.Temp_103;
+Dug_Temp(:,4) = Data.Temp_203;
+Dug_Temp(:,5) = Data.Temp_303;
+Dug_Temp(:,6) = Data.Temp_403;
+Dug_Temp(:,7) = Data.Temp_503;
 Dug_VWC_smooth = smoothdata(Dug_VWC,'gaussian',VWC_Smooth_Window);
 
+if ~ismember('WS_ms_Avg', Data.Properties.VariableNames);Data.WS_ms_Avg = Data.WS_ms_10_U_WVT;end
 WindSpeed_ms_10 = Data.WS_ms_Avg; % Wind Speed from sensor @ ~10 ft (3 m) height
 WindSpeed_ms_10_smooth = smoothdata(WindSpeed_ms_10,'gaussian',Smooth_Window); %wind is noisy, so this smoothes it
 
+
 %% Routine to set up boundary and initial conditions for model
-FLAY = 0.0075;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
+FLAY = 0.005;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%logspace(-2,0,400);%0:0.005:1; %FLAY values to test Christian used 0.01
 
 % ***************
 clear T_Test
@@ -235,7 +241,7 @@ for i = 1:length(stability_array) %Loop to optimize layer thickness (i.e. highes
 
     % Initialize Temperatures
     clear Subsurface_Temperatures_Running TEMP T_Start Subsurface_Temperatures
-    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,VWC_column,Humidity,NDAYS,material);
+    Subsurface_Temperatures = tima_initialize(Vars_init(1),density,Vars_init(2),Vars_init(5),T_std,T_Deep,Interpolated_Temp,dt,Layer_size_B,VWC_column,Humidity,NDAYS,material,'depth_transition',Vars_init(7),'material_lower',material_lower);
     Subsurface_Temperatures_Running(:,:) = Subsurface_Temperatures(1,:,:)-273.15; %Set up array using first day
     for D = 2:size(Subsurface_Temperatures,1) % for plotting
         TEMP(:,:) = Subsurface_Temperatures(D,:,:)-273.15;
@@ -316,7 +322,7 @@ hold off
 xlabel('Time (hr)');
 ylabel('Surface Temperature (C)');
 legend([G,H,F,M(1),M(2)],'Interpreter','none')
-chi_v_test = sum((Temps_to_fit-Test_Result).^2./err.^2)/(length(Temps_to_fit)-nvars); %reduced chi squared
+chi_v_test = sum((Temps_to_fit(fit_ind)-Test_Result(fit_ind)).^2./err(fit_ind).^2)/(length(Temps_to_fit(fit_ind))-nvars); %reduced chi squared
 ttl = sprintf('TI top = %0.2f Jm^{-2}K^{-1}s^{-1/2}, chi^{2} = %0.2f', sqrt(Vars_init(1)*Cp_Deep*density),chi_v_test);%Calculate TI from results
 title(ttl,'Interpreter','tex','FontName','Ariel')
 
@@ -337,8 +343,8 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       TData.timed_albedo=Albedo;
       TData.TIMESTAMP = Data.TIMESTAMP;
       TData.temps_to_fit=Temps_to_fit;
+      TData.temps_to_fit_interp=Interpolated_Temp;
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
-
       TData.temp_column = Dug_Temp;
 
 %   Model Data - Struct of static and model format variables
@@ -353,6 +359,7 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       MData.material_lower=material_lower;
       MData.nwalkers = nwalkers;
       MData.nstep = nstep;
+      MData.ndays = NDAYS;
       MData.minit = minit;
       MData.nvars=nvars;
       MData.parallel=true;
