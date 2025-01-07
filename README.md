@@ -145,7 +145,7 @@ The original implementation of the model was designed to derive a characteristic
       MData.mantle_thickness = mantle_thickness;
       MData.k_dry_std_mantle = k_dry_std_mantle;
       
-  outDIR: 'output directory path'
+    outDIR: 'output directory path'
 
 # Run Fitting Process
 [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR)
