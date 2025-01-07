@@ -38,12 +38,13 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 %           clockwise from South, typically -180:180 or 0:360 (1D vector)
 %       'solar_zenith_apparent': [degrees] Solar zenith in degrees,
 %           corrected for atmospheric refraction. (1D vector)
+%       T_surf_obs_C:
 %       VWC_column: [0-1, decimal fraction by volume] array of volumetric water content
 %           for each model layer with each time step, typically
 %           interpolated. (2D vector)
 %       windspeed_horiz: [m/s] Near surface horizontal wind speed,
 %           typically at 3m AGL. (1D vector)
-%   
+% 
 %   Constants:
 %       'aspect_cwfromS': [degrees] slope aspect clockwise from South. (scalar)
 %       CE: [Unitless] resistance to latent heat flux coefficient, similar
@@ -89,21 +90,46 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 %       'T_adj2': [index, temperature K] pair used to force a second
 %           column temperature change at a given time point due to wetting
 %           (1D vector)
-%
+% 
 % Output Parameters:
-%   T_Surf_C = Surface temperature time series (deg C)
+%   T_Surf_C = [C] Surface temperature time series (1D vector)
 %
 % Author
 %    Ari Koeppel -- Copyright 2025
 % ***************
+increase_sampling = 0; % option to increase sampling rate if model does not converge
+
 
 Subsurface_Temperatures = tima_initialize(k_dry_std_upper,rho_dry_upper,m,...
     theta_k,T_std,T_deep,T_surf_obs_C,dt,layer_size,VWC_column,RH,NDAYS,material,varargin{:});
 T_Start(:) = Subsurface_Temperatures(end,end,:);
 T_Start(1) = T_surf_obs_C(1)+273.15;
-
 [T_surf_C,~,~,~,~,~,~] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,...
         r_short_lower,r_long_upper,windspeed_horiz,T_deep,T_Start,layer_size,...
-        VWC_column,evap_depth.*ones(size(air_temp_C)),RH,emissivity,...
+        VWC_column,evap_depth,RH,emissivity,...
+         pressure_air_pa,varargin{:});
+
+if any(T_surf_C==-65535) && increase_sampling == 1
+    time_orig = dt.*(0:1:length(air_temp_C)-1);
+    dt = 10;
+    time_new = 0:dt:max(time_orig);
+    air_temp_C = interp1(time_orig,air_temp_C,time_new,'linear');
+    r_short_upper = interp1(time_orig,r_short_upper,time_new,'linear');
+    r_short_lower = interp1(time_orig,r_short_lower,time_new,'linear');
+    r_long_upper = interp1(time_orig,r_long_upper,time_new,'linear');
+    windspeed_horiz = interp1(time_orig,windspeed_horiz,time_new,'linear');
+    VWC_column = interp1(time_orig,VWC_column,time_new,'linear');
+    RH = interp1(time_orig,RH,time_new,'linear');
+    evap_depth = interp1(time_orig,evap_depth,time_new,'linear');
+    pressure_air_pa = interp1(time_orig,pressure_air_pa,time_new,'linear');
+    T_surf_C = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,...
+        r_short_lower,r_long_upper,windspeed_horiz,T_deep,T_Start,layer_size,...
+        VWC_column,evap_depth,RH,emissivity,...
         pressure_air_pa,varargin{:});
+    if any(~isreal(T_surf_C)) || any(isnan(T_surf_C))
+        T_surf_C(~isreal(T_surf_C)) = -65535;
+        T_surf_C(isnan(T_surf_C)) = -65535;
+    end
+    T_surf_C = interp1(time_new,T_surf_C,time_orig,'linear');
+end
 end

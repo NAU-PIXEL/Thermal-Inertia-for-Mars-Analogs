@@ -15,7 +15,7 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 % Syntax
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR)
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','2layer')
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer','Parallel',true,'SaveModels',true)
 %
 % varargin options:
 %   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
@@ -37,6 +37,8 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %       TData.evap_depth: [m] Depth of the evaporation front. (1D vector)
 %       TData.temps_to_fit: [C] Surface temperature values to be used for
 %           fitting. (1D vector)
+%       TData.temps_to_fit_interp: [C] Surface temperature values to be used for
+%           fitting with any data gaps filled in. (1D vector)
 %       TData.timed_albedo: [decimal fraction] time variant albedo (e.g.,
 %           due to wetting) for fitting surface. (1D vector)
 %       TData.TIMESTAMP: datetime array associated with each table row
@@ -137,145 +139,114 @@ TwoSpot = p.TwoSpot;
 Mode = p.Mode;
 Parallel= p.Parallel;
 SaveModels = p.SaveModels;
-MData.fit_ind = MData.fit_ind(MData.burnin_fit/MData.dt:end);
+MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
 
 if strcmp(Mode,'1layer')
-    formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material);
-    if MData.mantle_thickness > 0
-        formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
-            FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-            TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-            TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-            TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    end
+        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
     MData.minit = MData.minit(1:6,:);
 elseif strcmp(Mode,'2layer')
-    formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,'depth_transition',FitVar(7),...
-        'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower);
-    if MData.mantle_thickness > 0
-        formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
-            FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-            TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-            TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-            TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,'depth_transition',FitVar(7),...
-            'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
+        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',FitVar(7),...
+        'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
             'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    end
     MData.minit = MData.minit(1:8,:);
 elseif strcmp(Mode,'2layer_fixed_depth')
-    formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,'depth_transition',...
-        MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower);
-    if MData.mantle_thickness > 0
-        formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
-            FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-            TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-            TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-            TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,'depth_transition',...
-            MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
+        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',...
+        MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
             'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    end
     MData.minit = MData.minit([1:6 8],:);
 elseif strcmp(Mode,'2layer_fixed_lower')
-    formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
+    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,...
-        'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower);
-    if MData.mantle_thickness > 0
-        formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
-            FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-            TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-            TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-            TData.pressure_air_Pa,TData.temps_to_fit,'albedo',TData.timed_albedo,'material',MData.material,...
-            'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
+        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
+        'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
             'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    end
     MData.minit = MData.minit(1:7,:);
 else
     error('Mode entered does not match available options.')
 end
-%% Inputs to emcee
-k_air = 0.024; % Tsilingiris 2008
-k_H2O = 0.61;
-if strcmp(MData.material,'basalt') %amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'
-    k_solid = 2.2; % Bristow, 2002 - basaslt = 2.2, clay = 2.9, qtz = 8.8, Ice = 2.18, Granite = 2.0.
-elseif strcmp(MData.material,'granite')
-    k_solid = 2.0; 
-elseif strcmp(MData.material,'clay')
-    k_solid = 2.9; 
-elseif strcmp(MData.material,'sandstone')
-    k_solid = 8.8; 
-elseif strcmp(MData.material,'salt')
-    k_solid = 2.0; 
-elseif strcmp(MData.material,'amorphous')
-    k_solid = 2.0; 
-elseif strcmp(MData.material,'ice')
-    k_solid = 2.18; 
+%% Optimiztion
+optimize_MCMC = 1; %Option to use MCMC or Surrogate Opt
+if optimize_MCMC == 1
+    k_air = 0.024; % Tsilingiris 2008
+    k_H2O = 0.61;
+    if strcmp(MData.material,'basalt') %amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'
+        k_solid = 2.2; % Bristow, 2002 - basaslt = 2.2, clay = 2.9, qtz = 8.8, Ice = 2.18, Granite = 2.0.
+    elseif strcmp(MData.material,'granite')
+        k_solid = 2.0; 
+    elseif strcmp(MData.material,'clay')
+        k_solid = 2.9; 
+    elseif strcmp(MData.material,'sandstone')
+        k_solid = 8.8; 
+    elseif strcmp(MData.material,'salt')
+        k_solid = 2.0; 
+    elseif strcmp(MData.material,'amorphous')
+        k_solid = 2.0; 
+    elseif strcmp(MData.material,'ice')
+        k_solid = 2.18; 
+    else
+        k_solid = 2.2;
+    end
+    logPfuns = {@(theta)tima_ln_prior(theta,'depth_max',sum(MData.layer_size)) @(theta)tima_logPfun_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(theta,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)))};
+    
+    %% Run emcee
+    % ***************
+    % Named Parameter-Value pairs:
+    %   'StepSize': unit-less stepsize (default=2.5).
+    %   'ThinChain': Thin all the chains by only storing every N'th step (default=10)
+    %   'ProgressBar': Show a text progress bar (default=true)
+    %   'Parallel': Run in ensemble of walkers in parallel. (default=false)
+    %   'BurnIn': fraction of the chain that should be removed. (default=0)
+    % ***************
+    % – rejection rate is how often the new parameters are accepted. If this is far from ~30% (meaning inefficient), change the proposal step size (sigma),
+    %e.g., rej rate too big , make step size smaller, if too small, make step size bigger
+    tic
+    [models,LogPs]=gwmcmc(MData.minit,logPfuns,MData.nwalkers*MData.nstep,'BurnIn',MData.burnin_mcmc,'Parallel',Parallel,'ThinChain',MData.ThinChain);
+    elapsedTime = toc
+    if (size(models,1)<size(models,2))&&(ismatrix(models)), models=models'; end
+    if ndims(models)==3
+        models=models(:,:)'; 
+    end
+    M=size(models,2);
+    for r=1:M
+        quant=quantile(models(:,r),[0.16,0.5,0.84]);
+        RESULTS(:,r) = quant;
+    end
+    
+    fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
+    Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
+    TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
+    TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
+    TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 else
-    k_solid = 2.2;
+    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',p.Parallel,'MaxFunctionEvaluations',MData.nstep);
+    Obj = @(theta) tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(theta,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
+    problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts,'PlotFcn',[]) ; 
+    [RESULTS_holder,fval] = surrogateopt(problem);
+    RESULTS(:) = RESULTS_holder';
+    Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
+    TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
+    TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
+    TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 end
-
-if TwoSpot == true
-    k_parallel = k_solid*(1-MData.vars_init(5))+k_air*(MData.vars_init(5)-max(max(TData.VWC_II_column)))+k_H2O*(max(max(TData.VWC_II_column)));
-    k_series = 1/(MData.vars_init(5)/k_air+(1-MData.vars_init(5))/k_solid);
-    logPfuns = {@(theta)tima_ln_prior(theta,'m_min',0.4,'theta_k_max',0.75,'k_upper_min',k_series,'k_upper_max',k_parallel) @(theta)tima_logPfun_chi2v([TData.temps_to_fit(MData.fit_ind);TData.temps_to_fit_II(MData.fit_ind)],[tima_formod_subset(theta,MData.fit_ind,formod);tima_formod_subset(theta,MData.fit_ind,formod_II)],[MData.erf(TData.temps_to_fit(MData.fit_ind)); MData.erf(TData.temps_to_fit_II(MData.fit_ind))])};% a cell of function handles returning the log probality of a each outcome
-else
-    logPfuns = {@(theta)tima_ln_prior(theta,'depth_max',sum(MData.layer_size)) @(theta)tima_logPfun_chi2v(TData.temps_to_fit(MData.fit_ind),tima_formod_subset(theta,MData.fit_ind,formod),MData.erf(TData.temps_to_fit(MData.fit_ind)))};
-end
-%% Run emcee
-% ***************
-% Named Parameter-Value pairs:
-%   'StepSize': unit-less stepsize (default=2.5).
-%   'ThinChain': Thin all the chains by only storing every N'th step (default=10)
-%   'ProgressBar': Show a text progress bar (default=true)
-%   'Parallel': Run in ensemble of walkers in parallel. (default=false)
-%   'BurnIn': fraction of the chain that should be removed. (default=0)
-% ***************
-% – rejection rate is how often the new parameters are accepted. If this is far from ~30% (meaning inefficient), change the proposal step size (sigma),
-%e.g., rej rate too big , make step size smaller, if too small, make step size bigger
-tic
-[models,LogPs]=gwmcmc(MData.minit,logPfuns,MData.nwalkers*MData.nstep,'BurnIn',MData.burnin_mcmc,'Parallel',Parallel,'ThinChain',MData.ThinChain);
-elapsedTime = toc
-if (size(models,1)<size(models,2))&&(ismatrix(models)), models=models'; end
-if ndims(models)==3
-    models=models(:,:)'; 
-end
-M=size(models,2);
-for r=1:M
-    quant=quantile(models(:,r),[0.16,0.5,0.84]);
-    RESULTS(:,r) = quant;
-end
-%%
-if TwoSpot == true
-    fval = tima_fval_chi2v([TData.temps_to_fit(MData.fit_ind);TData.temps_to_fit_II(MData.fit_ind)],[tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod);tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod_II)],...
-        [MData.erf(TData.temps_to_fit(MData.fit_ind)); MData.erf(TData.temps_to_fit_II(MData.fit_ind))],MData.nvars);
-else
-    fval = tima_fval_chi2v(TData.temps_to_fit(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit(MData.fit_ind)),MData.nvars);
-end
-Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
-TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
-TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
-TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
-
 %% Print Log File 
 c = fix(clock);
 fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
 names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'Depth Tansition (m)' 'k-dry-300-lower (W/mK)'};
-if SaveModels == true
+if SaveModels == true && optimize_MCMC == 1
     save(fullfile(outDIR, [fname(1:end-4) '_Models.mat']),'models','names')
 end
 fid = fopen(fullfile(outDIR, fname), 'wt');
