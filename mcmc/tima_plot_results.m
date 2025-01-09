@@ -22,7 +22,7 @@ function [] = tima_plot_results(TData,MData,models,names,varargin)
 %       TData.DF: [decimal fraction] Fraction of  Global Horizontal Irradiance (GHI)
 %           or r_short_upper that is diffuse (see
 %           https://github.com/sandialabs/MATLAB_PV_LIB)
-%       TData.temps_to_fit: [C] Surface temperature values to be used for
+%       TData.temps_to_fit_interp: [C] Surface temperature values to be used for
 %           fitting.
 %       TData.temp_column: [C] array of Temperatures measured at depth for
 %           comparison to model results
@@ -124,7 +124,7 @@ if strcmp(Mode,'1layer')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
+    formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
@@ -138,7 +138,7 @@ elseif strcmp(Mode,'2layer')
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
         'depth_transition',FitVar(7),'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
+    formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
@@ -153,7 +153,7 @@ elseif strcmp(Mode,'2layer_fixed_depth')
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',...
         MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
+    formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
@@ -168,7 +168,7 @@ elseif strcmp(Mode,'2layer_fixed_lower')
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
         'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
-    formod_fluxes = @(FitVar) tima_heat_transfer_energy_terms(FitVar(1),FitVar(2),FitVar(3),...
+    formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
@@ -185,15 +185,15 @@ hold on
 xlabel('Time (hr)');
 ylabel('Temperature (C)');
 
-F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit(MData.fit_ind)-MData.erf(TData.temps_to_fit(MData.fit_ind));flipud(TData.temps_to_fit(MData.fit_ind)+MData.erf(TData.temps_to_fit(MData.fit_ind)))],[128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
-F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),1,'k.','DisplayName','FLIR Surface Observations');
+F(1) = fill([TData.TIMESTAMP(MData.fit_ind); flipud(TData.TIMESTAMP(MData.fit_ind))],[TData.temps_to_fit_interp(MData.fit_ind)-MData.erf(TData.temps_to_fit_interp(MData.fit_ind));flipud(TData.temps_to_fit_interp(MData.fit_ind)+MData.erf(TData.temps_to_fit_interp(MData.fit_ind)))],[128 193 219]./255,'Linestyle','none','DisplayName','FLIR error');
+F(2) = scatter(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit_interp(MData.fit_ind),1,'k.','DisplayName','FLIR Surface Observations');
 set(F(1), 'edgecolor', 'none');
 set(F(1), 'FaceAlpha', 0.5);
 M = plot(TData.TIMESTAMP(MData.fit_ind),T_surf_C((MData.fit_ind),1),'r', 'LineWidth', 2 ,'DisplayName','Surface Modeled');
 
 hold off
 legend([F(2) M], 'Interpreter','none')
-fval = tima_fval_chi2v(TData.temps_to_fit(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit(MData.fit_ind)),MData.nvars);
+fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
 Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density);
 TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
 TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
@@ -201,13 +201,13 @@ TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 ttl = sprintf('TI Top [Jm^{-2}K^{-1}s^{-12}] = %0.2f, chi_v = %0.2f',TI,fval);%Calculate TI from results
 title(ttl)
 
-residuals = TData.temps_to_fit(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod);
+residuals = TData.temps_to_fit_interp(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod);
 figure
 plot(TData.TIMESTAMP(MData.fit_ind),residuals)
 title('residuals')
 
 figure
-plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(TData.temps_to_fit(MData.fit_ind)),60),'DisplayName','Observed')
+plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(TData.temps_to_fit_interp(MData.fit_ind)),60),'DisplayName','Observed')
 hold on
 plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)),60),'DisplayName','Modeled')
 title('1hr gradients')
@@ -217,7 +217,7 @@ legend
 figure
 hold on
 ylabel('Temperature (C)');
-plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit(MData.fit_ind),'k','LineWidth', 0.5,'DisplayName','FLIR Surface Observations');
+plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit_interp(MData.fit_ind),'k','LineWidth', 0.5,'DisplayName','FLIR Surface Observations');
 title('FLIR Surface Observations')
 
 
@@ -258,7 +258,7 @@ title('Radiative')
 
 
 figure
-for time = 1:length(TData.temps_to_fit)
+for time = 1:length(TData.temps_to_fit_interp)
     full_latent(time) = sum(q_latent(time,:));
 end
 hold on

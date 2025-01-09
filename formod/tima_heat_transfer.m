@@ -1,16 +1,22 @@
-function [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+function [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
     rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
     windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
     pressure_air_pa,varargin)
-%% TIMA_HEAT_TRANSFER
+%% TIMA_HEAT_TRANSFER_ENERGY_TERMS
 %   This function uses observational data and assigned thermophysical properties 
 %   to estimate the temperature at the emitting surface of a 1D soil column through time.
 
 % Syntax
-%   [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+%   [T_surf_C,~,~,~,~,~,~,~] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
 %    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
 %    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
 %    pressure_air_pa,'depth_transition',0.5,'k_dry_std_lower',1)
+%
+%   [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
+%    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
+%    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
+%    pressure_air_pa,'depth_transition',0.5,'k_dry_std_lower',1)
+%
 %
 % Input Parameters ('single quotes' means optional varargin)
 %   Timeseries data
@@ -89,7 +95,13 @@ function [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 %           (1D vector)
 %
 % Output Parameters:
-%   T_Surf_C = Surface temperature time series (deg C)
+%   T_Surf_C = [C] Surface temperature time series (1D vector)
+%   T_sub_C = [C] Suburface temperature time series for all layers (2D vector)
+%   q_latent = [W/m^2] Latent heat flux time series for all layers (2D vector)
+%   k_eff_dt = [W/mK] Effective thermal conductivity time series for all layers (2D vector)
+%   q_conv = [W/m^2] Surface sensible heat flux time series (1D vector)
+%   q_rad = [W/m^2] Surface radiative heat flux time series (1D vector)
+%   q_G = [W/m^2] Heat flux between top and second subsurface layer time series (1D vector)
 %
 % Author
 %    Ari Koeppel -- Copyright 2023
@@ -104,13 +116,14 @@ function [T_surf_C] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E
 %      
 % ***************
 p = inputParser;
+p.KeepUnmatched=true;
 p.addRequired('r_short_lower',@(x)all(x>=0) && isnumeric(x));
 p.addRequired('r_short_upper',@(x)all(x>=0) && isnumeric(x));
-p.addOptional('k_dry_std_lower',k_dry_std_upper,@isnumeric);
-p.addOptional('depth_transition',sum(layer_size),@isnumeric);
-p.addOptional('rho_dry_lower',rho_dry_upper,@isnumeric);
-p.addOptional('mantle_thickness',0,@isnumeric);
-p.addOptional('k_dry_std_mantle',k_dry_std_upper,@isnumeric);
+p.addParameter('k_dry_std_lower',k_dry_std_upper,@isnumeric);
+p.addParameter('depth_transition',sum(layer_size),@isnumeric);
+p.addParameter('rho_dry_lower',rho_dry_upper,@isnumeric);
+p.addParameter('mantle_thickness',0,@isnumeric);
+p.addParameter('k_dry_std_mantle',k_dry_std_upper,@isnumeric);
 p.addParameter('material',"basalt",@ischar);
 p.addParameter('material_lower',"basalt",@ischar);
 p.addParameter('albedo',[],@isnumeric);
@@ -166,6 +179,13 @@ m_melt = zeros(NLAY,1);%area density of melted ice per layer kg/m^2
 k = k_dry_std_upper.*ones(1,NLAY);
 kay_upper = k_dry_std_upper;
 kay_lower = k_dry_std_lower;
+
+q_G = zeros(length(air_temp_C),1);
+q_rad = zeros(length(air_temp_C),1);
+q_conv = zeros(length(air_temp_C),1);
+q_latent = zeros(length(air_temp_C),NLAY);
+k_eff_dt = zeros(length(air_temp_C),NLAY);
+
 FC = NaN(NLAY-1,1);
 FB = layer_size(2)/layer_size(1);
 for z = 1:NLAY-1
@@ -174,6 +194,8 @@ end
 for t = 2:length(air_temp_C)
     %*********LATENT HEAT & THERMAL CONDUCTIVITY***********
     [q_evap_1,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,1),VWC_column(t-1,1));
+    q_latent(t,1) = q_evap_1;
+    q_latent(1,:) = q_evap_1.*ones(1,NLAY);
     if Mantle_Ind >= 1
         k(1) = tima_conductivity_model_lu2007(k_dry_std_mantle,T(t-1,1),T_std,VWC_column(t-1,1),theta_k,m,Soil_RH,material);%Top
     else
@@ -189,7 +211,7 @@ for t = 2:length(air_temp_C)
     %****************************************
 
     %*********SENSIBLE HEAT***********
-    q_conv = tima_sensible_heat_model(CH,windspeed_horiz(t-1),air_temp_K(t-1),T(t-1,1)); %(W/m^2)
+    q_conv(t) = tima_sensible_heat_model(CH,windspeed_horiz(t-1),air_temp_K(t-1),T(t-1,1)); %(W/m^2)
     %*******************************
     %********Surface emission*********
     if isempty(e_fxn) %Treat as black body using Stefan-Boltzmann Law
@@ -205,20 +227,20 @@ for t = 2:length(air_temp_C)
     %*********Radiative Flux***********
     if isempty(solar_azimuth_cwfromS) || isempty(solar_zenith_apparent) || isempty(aspect_cwfromS) || isempty(f_diff) && slope_angle == 0 %single ROI data over flat terrain
         if isempty(albedo)
-            q_rad = r_short_upper(t-1)-r_short_lower(t-1)+emissivity*r_long_upper(t-1)-r_long_lower;%net heat flux entering surface
+            q_rad(t) = r_short_upper(t-1)-r_short_lower(t-1)+emissivity*r_long_upper(t-1)-r_long_lower;%net heat flux entering surface
         else
-            q_rad = (1-albedo(t-1))*r_short_upper(t-1)+emissivity*r_long_upper(t-1)-r_long_lower; %net heat flux entering surface
+            q_rad(t) = (1-albedo(t-1))*r_short_upper(t-1)+emissivity*r_long_upper(t-1)-r_long_lower; %net heat flux entering surface
         end
     else %variably shadowed/sloped terrain
         phi = solar_azimuth_cwfromS(t-1);
         Z = solar_zenith_apparent(t-1);
         Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);Incidence(Incidence>1) = 1; Incidence(Incidence<-1) = -1;
         if isempty(shadow_data)
-            q_rad = (1-albedo(t-1))*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
+            q_rad(t) = (1-albedo(t-1))*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
         else
             q_rad_full = (1-albedo)*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
             Lit_Fraction = shadow_data(shadow_time_ind(t-1)); %Shadow = 0, unshadowed = 1;
-            q_rad = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
+            q_rad(t) = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
         end
     end
     %*******************************
@@ -227,24 +249,14 @@ for t = 2:length(air_temp_C)
     %ref: Kieffer, 2013
     [~,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,2),VWC_column(t-1,2));
     k(2) = tima_conductivity_model_lu2007(kay_lower,T(t-1,2),T_std,VWC_column(t-1,2),theta_k,m,Soil_RH,material);
-    q_G = 2*(T(t-1,2)-T(t-1,1))/(layer_size(1)/k(1)+layer_size(2)/k(2)); %heat flux from conducting with lower layer
+    q_G(t) = 2*(T(t-1,2)-T(t-1,1))/(layer_size(1)/k(1)+layer_size(2)/k(2)); %heat flux from conducting with lower layer
     %*******************************
 
     %*********Combine Heat transfer elements***********
-    W = q_rad+q_G+q_conv+q_evap_1; %Total Heat Flux, W/m^2
+    W = q_G(t)+q_conv(t)+q_rad(t)+q_evap_1; %Heat Flux, W/m^2
     dT = dt/(Cp*rho*layer_size(1))*(W); %Temperature change for given thickness of material with known volumetric Cp
     T(t,1) = T(t-1,1) + dT; %new T at surface
     %*******************************
-    % if ~isempty(T_adj1)
-    %     if VWC_column(t,1) > 0.02 && (t == ceil(T_adj1(1)))
-    %         T(t,1) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
-    %     end
-    % end
-    % if ~isempty(T_adj2)
-    %     if VWC_column(t,1) > 0.02 && (t == ceil(T_adj2(1)))
-    %         T(t,1) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
-    %     end
-    % end
     %*********Subsurface Flux (from KRC, Kieffer, 2013)***********
     for z = 2:NLAY-1 %layer loop
         if z <= Mantle_Ind && z < D_z %Surface Mantle (low k material that causes high frequency imprint on general diurnal trend
@@ -302,25 +314,22 @@ for t = 2:length(air_temp_C)
             q_melt = (T(t,z)-273.15)*(Cp*rho*layer_size(z)); %heat in to ice J/m^2
             m_melt(z) = m_melt(z)+q_melt/334000; %heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
             if m_melt(z) > 1500*layer_size(z); D_z = D_z+1; end %melting
-            %elseif freezing
+            %To add: elseif freezing
             T(t,z) = 273.15;
         end
-        % if ~isempty(T_adj1)
-        %     if VWC_column(t,z) > 0.02 && (t == ceil(T_adj1(1)))
-        %         T(t,z) = T_adj1(2); %Assigned Value (e.g., due to artificial wetting)
-        %     end
-        % end
-        % if ~isempty(T_adj2)
-        %     if VWC_column(t,z) > 0.02 && (t == ceil(T_adj2(1)))
-        %         T(t,z) = T_adj2(2); %Assigned Value (e.g., due to artificial wetting)
-        %     end
-        % end
+        q_latent(t,z) = q_evap_z;        
     end
+    k_eff_dt(t,:) = k;
 end
+k_eff_dt(1,:) = k_eff_dt(2,:);
+q_G(1)=q_G(2);
+q_conv(1)=q_conv(2);
+q_rad(1)=q_rad(2);
 T_surf_C = T(:,1) - 273.15;
+T_sub_C = T(:,2:end)-273.15;
 if any(~isreal(T_surf_C)) || any(isnan(T_surf_C))
     fprintf('Non convergance for k: %0.4f, m: %0.4f, CH: %0.4f, CE: %0.4f, theta_k: %0.4f, theta_E: %0.4f \n',k_dry_std_upper,m,CH,CE,theta_k,theta_E)
     T_surf_C(~isreal(T_surf_C)) = -65535;
     T_surf_C(isnan(T_surf_C)) = -65535;
 end
-
+end
