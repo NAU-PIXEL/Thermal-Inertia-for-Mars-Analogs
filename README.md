@@ -36,7 +36,7 @@ and optional parameters:
 
 
 # Forward Model:
-  [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,pressure_air_pa,varargin)
+    [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,pressure_air_pa,varargin)
 
 ## Input Parameters ('single quotes' means optional varargin)
   ### Timeseries data
@@ -176,10 +176,11 @@ and optional parameters:
 Example input files are located in the [`Example Data`](hhttps://github.com/NAU-PIXEL/Thermal-Inertia-for-Mars-Analogs/tree/main/Example%20Data) folder.
 
 # Run Fitting Process
-[models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
+    [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 
 # Visualize Results
-tima_plot_results(TData,MData,models,names,varargin)
+    tima_plot_results(TData,MData,models,names,varargin)
+    
 ![TempFit](https://github.com/user-attachments/assets/8ec806ed-61ec-43e2-b552-0ca5e52da66d)
 ![Corner](https://github.com/user-attachments/assets/4aa489ee-407d-4f55-9cf2-73198073981d)
 ![SubTemps](https://github.com/user-attachments/assets/550d6d10-7ccc-4662-83e2-4105e22bee93)
