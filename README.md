@@ -8,7 +8,32 @@
 Koeppel, A.H., Edwards, C.S., Edgar, L.A., Nowicki, S., Bennett, K.A., Gullikson, A., Piqueux, S., Eifert, H., Chapline, D. and Rogers, A.D., 2024. A novel surface energy balance method for thermal inertia studies of terrestrial analogs. Earth and Space Science, 11(9), p.e2023EA003259.
 
 # Overview: 
-The original implementation of the model was designed to derive a characteristic dry soil thermal conductivity at 300K. The procedure achieves this by inputing micrometeorological data into a surface energy balance forward model and adjusting thermal conductivity (along with 5 other modifying parameters) to fit surface skin temperature data (typically obtained through radiometer observation). Model updates have included multilayer paramtrizations, including consideration of subsurface ice. Thus, the model can be used to derive soil physical properties, layering and the depth to subsurface material transitions based entirely on surface temperature and weather observations.
+The original implementation of the model was designed to derive a characteristic dry soil thermal conductivity at 300K. The procedure achieves this by inputing micrometeorological data into a surface energy balance forward model and adjusting thermal conductivity (along with 5 other modifying parameters) to fit surface skin temperature data (typically obtained through radiometer observation). The preferred fitting protocol involves Markov Chain Monte Carlo simulations to identify the most probable set of constants and associated uncertainties. Model updates have included multilayer parametrizations, including consideration of subsurface ice. Thus, the model can be used to derive soil physical properties, layering and the depth to subsurface material transitions based entirely on surface temperature and weather observations.
+
+The required fitting parameters are:
+1.      k_dry_std_upper: [W/mK] bulk dry thermal conductivty of upper layer at T_std (scalar)
+2.      m: [unitless] pore-network-connectivity-parameter, typically 0-1.3 (scalar)
+3.      CH: [Unitless] resistance to sensible heat flux coefficient,
+          similar to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2)
+          1/CH should be 0.0028-0.0075 (or CH~100-400) for smooth to
+          roughly open soils on Davenport Scale, CH is larger (more
+          resistence) with rougher topography or larger vegetation (scalar)
+4.      CH: [Unitless] resistance to sensible heat flux coefficient,
+          similar to the aerodynamic scaling factor rho_air*Cp_air/(log(z1/z0)^2/Kv^2)
+          1/CH should be 0.0028-0.0075 (or CH~100-400) for smooth to
+          roughly open soils on Davenport Scale, CH is larger (more
+          resistence) with rougher topography or larger vegetation (scalar)
+5.       theta_k: [0-1, fraction by volume] conductivity soil moisture inflection
+          point - in theory this should be similar to saturation value or porosity (scalar) 
+6.       theta_E: [0-1, fraction by volume] latent heat soil moisture inflection
+          point (scalar)
+     
+and optional parameters:
+
+7.       'depth_transition': [m] Depth of major transition between upper
+          material and lower material. (scalar)
+8.       'k_dry_std_lower': [W/mK] bulk dry thermal conductivty of lower layer at T_std (scalar)
+
 
 # Forward Model:
   [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,pressure_air_pa,varargin)
