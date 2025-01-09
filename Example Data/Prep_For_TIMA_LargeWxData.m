@@ -328,7 +328,6 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       TData.VWC_column=VWC_column;
       TData.evap_depth=evap_depth.*ones(size(Air_Temp_C));
       TData.humidity=Humidity;
-      TData.humidity=Humidity;
       TData.pressure_air_Pa=Pressure_air_Pa;
       TData.r_long_upper=R_Long_Upper;
       TData.r_short_upper=R_Short_Upper;
@@ -339,7 +338,7 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       TData.TIMESTAMP = Data.TIMESTAMP;
       TData.temps_to_fit_interp=Interpolated_Temp;
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
-      TData.temp_column = Dug_Temp;
+      TData.temp_column=Dug_Temp;
 
 %   Model Data - Struct of static and model format variables
       MData.burnin_fit=burnin_fit;

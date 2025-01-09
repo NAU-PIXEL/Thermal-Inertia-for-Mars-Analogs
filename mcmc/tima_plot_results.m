@@ -201,17 +201,17 @@ TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
 ttl = sprintf('TI Top [Jm^{-2}K^{-1}s^{-12}] = %0.2f, chi_v = %0.2f',TI,fval);%Calculate TI from results
 title(ttl)
 
-residuals = TData.temps_to_fit_interp(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod);
-figure
-plot(TData.TIMESTAMP(MData.fit_ind),residuals)
-title('residuals')
+% residuals = TData.temps_to_fit_interp(MData.fit_ind)-tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod);
+% figure
+% plot(TData.TIMESTAMP(MData.fit_ind),residuals)
+% title('residuals')
 
-figure
-plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(TData.temps_to_fit_interp(MData.fit_ind)),60),'DisplayName','Observed')
-hold on
-plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)),60),'DisplayName','Modeled')
-title('1hr gradients')
-legend
+% figure
+% plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(TData.temps_to_fit_interp(MData.fit_ind)),60),'DisplayName','Observed')
+% hold on
+% plot(TData.TIMESTAMP(MData.fit_ind),movmean(gradient(tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod)),60),'DisplayName','Modeled')
+% title('1hr gradients')
+% legend
 
 %% Plot sub fluxes!
 figure
@@ -225,21 +225,21 @@ figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP(MData.fit_ind),q_conv(MData.fit_ind),'g', 'LineWidth', 1,'DisplayName','sensible heat');
-title('Sensible')
+title('Sensible Heat Flux')
 
 figure
 hold on
 ylabel('W/mK');
-plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),1),'r:', 'LineWidth', 1 ,'DisplayName','k_eff (layer 1)');
-plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),2),'r', 'LineWidth', 1 ,'DisplayName','k_eff (layer 2)');
-plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),end-1),'r--', 'LineWidth', 1 ,'DisplayName','k_eff (layer end-1)');
+plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),1),'r:', 'LineWidth', 1 ,'DisplayName','layer 1');
+plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),2),'r', 'LineWidth', 1 ,'DisplayName','layer 2');
+plot(TData.TIMESTAMP(MData.fit_ind),k_eff_dt((MData.fit_ind),end-1),'r--', 'LineWidth', 1 ,'DisplayName','layer end-1');
 hold off
 legend
-title('K_eff')
+title('k_{eff}')
 
 figure
 hold on
-ylabel('W/mK');
+ylabel('Temperature (C)');
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),1),'k:', 'LineWidth', 1 ,'DisplayName','Layer 1');
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),2),'k', 'LineWidth', 1 ,'DisplayName','Layer 2');
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),3:end-3),'b', 'LineWidth', 0.25 ,'DisplayName','Middle Layers');
@@ -248,13 +248,13 @@ plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),end-2),'k-.', 'LineW
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),end-1),'k--', 'LineWidth', 1 ,'DisplayName','Layer end-1');
 hold off
 legend
-title('Temperature')
+title('Subsurface Temperatures')
 
 figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP(MData.fit_ind),q_rad(MData.fit_ind),'m', 'LineWidth', 1 ,'DisplayName','Radiative heat');
-title('Radiative')
+title('Net Surface Irradiance')
 
 
 figure
@@ -264,11 +264,11 @@ end
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP(MData.fit_ind),full_latent(MData.fit_ind),'c', 'LineWidth', 1 ,'DisplayName','latent heat');
-title('Latent')
+title('Surface Latent Heat Flux')
 
 figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP(MData.fit_ind),q_G(MData.fit_ind),'b', 'LineWidth', 1,'DisplayName','ground heat');
-title('Ground')
+title('Ground Heat Flux')
 end
