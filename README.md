@@ -36,7 +36,7 @@ and optional parameters:
 
 
 # Forward Model:
-    [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,pressure_air_pa,varargin)
+    [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,  windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,pressure_air_pa,varargin)
 
 ## Input Parameters ('single quotes' means optional varargin)
   ### Timeseries data
@@ -126,57 +126,89 @@ and optional parameters:
 
 # Fitting Process Input/Output Setup:
   ### Time data - struct of timeseries data variables
-      TData.air_Temp_C=Air_Temp_C;
-      TData.DF=f_diff;
-      TData.VWC_column=VWC_column;
-      TData.evap_depth=evap_depth.*ones(size(Air_Temp_C));
-      TData.humidity=Humidity;
-      TData.humidity=Humidity;
-      TData.pressure_air_Pa=Pressure_air_Pa;
-      TData.r_long_upper=R_Long_Upper;
-      TData.r_short_upper=R_Short_Upper;
-      TData.r_short_lower=R_Short_Lower;
-      TData.solarazimuth_cwfromS=SolarAzimuthCwfromS;
-      TData.solarzenith_apparent=SolarZenith_Apparent;
-      TData.timed_albedo=Albedo;
-      TData.TIMESTAMP = Data.TIMESTAMP;
-      TData.temps_to_fit=Temps_to_fit;
-      TData.windspeed_horiz_ms=WindSpeed_ms_10;
-      TData.temp_column = Dug_Temp;
+      TData.air_Temp_C: [C] near surface air temperature, typically at 3
+          m AGL (1D vector)
+      TData.DF: [decimal fraction] Fraction of  Global Horizontal Irradiance (GHI)
+          or r_short_upper that is diffuse (1D vector)
+      TData.evap_depth: [m] Depth of the evaporation front. (1D vector)
+      TData.temps_to_fit_interp: [C] Surface temperature values to be used for
+          fitting with any data gaps filled in. (1D vector)
+      TData.timed_albedo: [decimal fraction] time variant albedo (e.g.,
+          due to wetting) for fitting surface. (1D vector)
+      TData.TIMESTAMP: datetime array associated with each table row
+          spaced by Mdata.dt [s] (1D datetime)
+      TData.humidity: [decimal fraction] array of near surface relative humidity values,
+          typically at 3m AGL TData.r_long_upper: [W/m^2] Integrated longwave radiation (4.5 to 42 μm) incident on flat
+          surface (1D vector)
+      TData.pressure_air_Pa: [Pa] station pressure, typically at 3m AGL (1D vector)
+      TData.r_long_upper: [W/m^2] Integrated longwave radiation (4500 to 42000 nm) incident on flat
+          surface (1D vector)
+      TData.r_short_lower: [W/m^2] Integrated upwelling shortwave radiation (305 to 2800 nm) from flat
+          surface (1D vector)
+      TData.r_short_upper: [W/m^2] Integrated shortwave radiation (305 to 2800 nm) incident on flat
+          surface (1D vector)
+      TData.solarazimuth_cwfromS: [degrees] Solar azimuth in degrees
+          clockwise from South, typically -180:180 or 0:360 (1D vector)
+      TData.solarzenith_apparent: [degrees] Solar zenith in degrees,
+          corrected for atmospheric refraction. (1D vector)
+      TData.VWC_column: [decimal fraction by volume] array of volumetric water content
+          for each model layer with each time step, typically
+          interpolated. (2D vector)
+      TData.windspeed_horiz_ms: [m/s] Near surface horizontal wind speed,
+          typically at 3m AGL. (1D vector)
 
    ### Model Data - Struct of static and model format variables
-      MData.burnin_fit=burnin_fit;
-      MData.burnin_mcmc=burnin_mcmc;
-      MData.dt=dt;  
-      MData.density=density; 
-      MData.emissivity=emissivity;
-      MData.fit_ind = fit_ind;
-      MData.layer_size=Layer_size_B;
-      MData.material=material;
-      MData.material_lower=material_lower;
-      MData.nwalkers = nwalkers;
-      MData.nstep = nstep;
-      MData.ndays = NDAYS;
-      MData.minit = minit;
-      MData.nvars=nvars;
-      MData.parallel=true;
-      MData.T_deep= T_Deep; 
-      MData.T_start= T_Start;
-      MData.T_std=T_std;
-      MData.ThinChain=20; %[20]
-      MData.notes = input('Please enter label/note: ', 's');
-      MData.vars_init = Vars_init;
-      MData.erf = erf;
-      MData.mantle_thickness = mantle_thickness;
-      MData.k_dry_std_mantle = k_dry_std_mantle;
-      
-    outDIR: 'output directory path'
+      MData.burnin_fit: initial time length (s) to ignore in fitting (vector, default=0)
+      MData.burnin_mcmc: fraction of the chain that should be removed.
+          (scalar, default=0)
+      MData.density: [kg/m^3] Value for density of soil beneath tower.
+          (scalar)
+      MData.dt: [s] Time step (scalar)
+      MData.emissivity: [0-1] Weighted thermal emissivity over wavelength
+          range of sensor. (scalar)
+      MData.erf: Uncertainty as function of observed temperature (function_handle)
+      MData.fit_ind: Indecies of temps_to_fit_interp in which to apply fitting
+          to (scalar)
+      MData.k_dry_std_mantle: [W/mK] bulk dry thermal conductivty of topmost
+          mantling layer at T_std (scalar)
+      MData.layer_size: [m] List of vertical thickness for each layer
+          from top to bottom. (1D vector)
+      MData.mantle_thickness: [m] thickness of topmost mantling layer. (scalar)
+      MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
+      MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
+      MData.minit: Vector of initialized test variables with as many
+          randomized samples as desired for fitting, 50 is good such that
+          vector is nvarx50 (2D vector)
+      MData.notes: Details to record in data structure (string)
+      MData.nstep: Number of iterations for curve fitting, 250 is good
+          (scalar)
+      MData.nvars: Number of variables being fit for (scalar)
+      MData.nwalkers: Number of walkers in MCMC ensemble (scalar)
+      MData.ThinChain: MCMC data reduction by thinning all output chains by only storing every N'th step (scalar, default=10)
+      MData.T_adj1: [index, temperature K] pair used to force column
+          temperature change at a given time point due to wetting (1D vector,
+          optional)
+      MData.T_adj2: [index, temperature K] pair used to force a second
+          column temperature change at a given time point due to wetting (1D vector,
+          optional)
+      MData.T_deep: [K] Lower boundary condition, fixed temperature (scalar)
+      MData.T_start: [K] Initial condition, list of center temperatures
+          for each layer at start of simulation (scalar)
+      MData.T_std: [K] Standard temperature; typically 300 (scalar)
+      MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
+          Surf. ex. coef. (CH) [unitless], Surf. ex. coef. (CE) [unitless], Soil Moist. Infl. (thetak) [% by volume],...
+          Soil Moist. Infl. (thetaE) [% by volume], (Transition Depth [m]), (k-lower [W/mK])]
+          List of 6-8 inputs for variables to serve as either initial or fixed values. (1D vector)
+
+Output directory: 
+
+      out_DIR: Full path to directory for outputs (string)
     
 ## Input data:
 Example input files are located in the [`Example Data`](hhttps://github.com/NAU-PIXEL/Thermal-Inertia-for-Mars-Analogs/tree/main/Example%20Data) folder.
 
 # Run Fitting Process
-    [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
+    [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer','Parallel',true,'SaveModels',true);
 
 # Visualize Results
     tima_plot_results(TData,MData,models,names,varargin)
