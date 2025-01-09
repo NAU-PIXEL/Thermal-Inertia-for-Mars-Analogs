@@ -1,4 +1,7 @@
+![logo](https://github.com/user-attachments/assets/e6d43934-838c-4137-9df0-3e163166e27c)
+
 # Thermal Inertia for Mars Analogs (TIMA) Model
+
  TIMA is a finite element numerical model of soil heat transfer that that considers time-variability in thermal conductivity as a function of temperature, moisture, and composition. The detailed parametrization of thermal conductivity is meant to enable direct translation between soil thermophysical properties on Earth and Mars. This repository is maintained by [Ari Koeppel](https://earthsciences.dartmouth.edu/people/ari-koeppel). Please cite Koeppel et al., (2024) when using the model.
 
 # References:
@@ -8,10 +11,7 @@ Koeppel, A.H., Edwards, C.S., Edgar, L.A., Nowicki, S., Bennett, K.A., Gullikson
 The original implementation of the model was designed to derive a characteristic dry soil thermal conductivity at 300K. The procedure achieves this by inputing micrometeorological data into a surface energy balance forward model and adjusting thermal conductivity (along with 5 other modifying parameters) to fit surface skin temperature data (typically obtained through radiometer observation). Model updates have included multilayer paramtrizations, including consideration of subsurface ice. Thus, the model can be used to derive soil physical properties, layering and the depth to subsurface material transitions based entirely on surface temperature and weather observations.
 
 # Forward Model:
-  [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,...
-    rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,...
-    windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,...
-    pressure_air_pa,varargin)
+  [T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = tima_heat_transfer_energy_terms(k_dry_std_upper,m,CH,CE,theta_k,theta_E,rho_dry_upper,dt,T_std,air_temp_C,r_short_upper,r_short_lower,r_long_upper,windspeed_horiz,T_deep,initial_temps,layer_size,VWC_column,evap_depth,RH,emissivity,pressure_air_pa,varargin)
 
 ## Input Parameters ('single quotes' means optional varargin)
   ### Timeseries data
@@ -146,12 +146,20 @@ The original implementation of the model was designed to derive a characteristic
       MData.k_dry_std_mantle = k_dry_std_mantle;
       
     outDIR: 'output directory path'
-
-# Run Fitting Process
-[models,names] = tima_TI_Earth_Tower(TData,MData,outDIR)
-
-# Visualize
-tima_plot_results(TData,MData,models,names,varargin)
-
+    
 ## Input data:
 Example input files are located in the [`Example Data`](hhttps://github.com/NAU-PIXEL/Thermal-Inertia-for-Mars-Analogs/tree/main/Example%20Data) folder.
+
+# Run Fitting Process
+[models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
+
+# Visualize Results
+tima_plot_results(TData,MData,models,names,varargin)
+![TempFit](https://github.com/user-attachments/assets/8ec806ed-61ec-43e2-b552-0ca5e52da66d)
+![Corner](https://github.com/user-attachments/assets/4aa489ee-407d-4f55-9cf2-73198073981d)
+![SubTemps](https://github.com/user-attachments/assets/550d6d10-7ccc-4662-83e2-4105e22bee93)
+![keff](https://github.com/user-attachments/assets/3205714b-81e2-4aff-8482-569936f775ad)
+![GroundHeat](https://github.com/user-attachments/assets/0aa85abe-f935-4d81-bfc0-a8eac5020e55)
+![Rad](https://github.com/user-attachments/assets/ac3addf0-a153-46ed-bff8-1c209747a36b)
+![SensibleHeat](https://github.com/user-attachments/assets/8da21e97-13c3-45cd-9b39-40866374c9c9)
+![LatentHeat](https://github.com/user-attachments/assets/e7b38248-414b-465b-9bb4-a355ad493011)
