@@ -19,9 +19,9 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %
 % varargin options:
 %   'IncreaseSampling': Option to increase sampling rate if model does not
-%       converge (default=false) (logical)
-%   'Initialize': Option to reinitialize subsurface temperatures for run. Increases compute time, 
-%       but avoids dramatic shifts with param optimization leading to instability. (default=false) (logical)
+%       converge. Increases compute time, but avoids nonconvergence. (default=false) (logical)
+%   'Initialize': Option to reinitialize subsurface temperatures for each run. Increases compute time, 
+%       but avoids dramatic shifts with parameter optimization leading to instability. (default=false) (logical)
 %   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
 %       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
 %       layer and the transition depth) (default='1layer') (string)
@@ -75,8 +75,11 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %       MData.erf: Uncertainty as function of observed temperature (function_handle)
 %       MData.fit_ind: Indecies of temps_to_fit_interp in which to apply fitting
 %           to (scalar)
+%       MData.k_dry_std_mantle: [W/mK] bulk dry thermal conductivty of topmost
+%           mantling layer at T_std (scalar)
 %       MData.layer_size: [m] List of vertical thickness for each layer
 %           from top to bottom. (1D vector)
+%       MData.mantle_thickness: [m] thickness of topmost mantling layer. (scalar)
 %       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
 %       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
 %       MData.minit: Vector of initialized test variables with as many
@@ -95,7 +98,7 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %           column temperature change at a given time point due to wetting (1D vector,
 %           optional)
 %       MData.T_deep: [K] Lower boundary condition, fixed temperature (scalar)
-%%       MData.T_start: [K] Initial condition, list of center temperatures
+%       MData.T_start: [K] Initial condition, list of center temperatures
 %           for each layer at start of simulation (scalar)
 %       MData.T_std: [K] Standard temperature; typically 300 (scalar)
 %       MData.vars_init: [k-upper [W/mK], Pore network con. par. (mk) [unitless],...
@@ -113,16 +116,11 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %    Ari Koeppel -- Copyright 2023
 %
 % Sources
-%   Optimization tool: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
-%   Subsurface heat flux: Kieffer et al., 2013
-%   Irradiance Calculation: https://github.com/sandialabs/MATLAB_PV_LIB
-%   Sensible heat flux:
-%   Latent heat flux: Daamen and Simmonds 1996 + Mahfouf and Noilhan (1991)+ Kondo1990
-%   Thermal conductivity mixing:
+%   Surrogate Optimization: https://www.mathworks.com/help/gads/table-for-choosing-a-solver.html
+%   MCMC: Goodman & Weare (2010), Ensemble Samplers With Affine Invariance, Comm. App. Math. Comp. Sci., Vol. 5, No. 1, 65–80
+%       Foreman-Mackey, Hogg, Lang, Goodman (2013), emcee: The MCMC Hammer, arXiv:1202.3665
+%       https://github.com/grinsted/gwmcmc Aslak Grinsted 2015
 %   
-% See also 
-%   time_heat_transfer.m tima_initialize.m tima_ln_prior.m
-%   tima_mapping_recombine_rows.m
 
 format shortG
 p = inputParser;
