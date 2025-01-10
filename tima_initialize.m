@@ -1,4 +1,4 @@
-function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS,material)
+function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_std,T_deep,surface_temperature_C,dt,layer_size,VWC_column,RH,NDAYS,material,varargin)
 %% TIMA_INITIALIZE
 %   Simple version of Heat tansfer model used to estimate a realistic subsurface 
 %   temperatures at start of model
@@ -14,17 +14,18 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
 %
 % Input Parameters
 %       k_dry_std: [W/mK] mean dry soil bulk thermal conductivity (vector)
-%       rho_dry: [kg/m^3] mean dry soil bulk density (vector)
-%       m: [unitless] pore-network-connectivity-parameter (vector)
-%       theta_k: [fraction by volume] conductivity soil moisture inflection point - in theory this should be similar to saturation value or porosity (vector)
-%       T_std: [deg K] Standard temperature; typically 300 (vector)
-%       T_deep: [deg C] bottom layer constant temperature (vector)
+%       rho_dry: [kg/m^3] mean dry soil bulk density (scalar)
+%       m: [unitless] pore-network-connectivity-parameter (scalar)
+%       theta_k: [0-1, fraction by volume] conductivity soil moisture
+%           inflection point - in theory this should be similar to saturation value or porosity (scalar)
+%       T_std: [deg K] Standard temperature; typically 300 (scalar)
+%       T_deep: [deg C] bottom layer constant temperature (scalar)
 %       surface_temperature_C: [deg C] Soil surface temperature (vector)
 %       layer_size: [m] array of thickness of subsurface grid layers (vector)
-%       dt: [s] time step (cector)
-%       VWC_column: [fraction by volume] volumetric water content measured at multiple depths (vector)
+%       dt: [s] time step (scalar)
+%       VWC_column: [fraction by volume] volumetric water content measured at multiple depths (2D vector)
 %       RH: [fraction] relative humidity of air (vector)
-%       NDAYS: [unitless] # of days to run equilib model for: More = closer to equilib, fewer = faster (vector)
+%       NDAYS: [unitless] # of days to run equilib model for: More = closer to equilib, fewer = faster (scalar)
 %       material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
 %
 % Outputs:
@@ -37,7 +38,17 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
 %   Hanks 1992: Good tmperature approximations can be made...even for many nonuniform soils by assuming a uniform thermal diffusivity. 
 %   tima_conductivity_model_lu2007.m tima_specific_heat_model_hillel.m
     % ***************    
-    
+    p = inputParser;
+    p.KeepUnmatched=true;
+    p.addParameter('material_lower',"basalt",@ischar);
+    p.addParameter('depth_transition',sum(layer_size),@isnumeric);
+    p.parse(varargin{:});
+    p=p.Results;
+    material_lower = p.material_lower;
+    depth_transition = p.depth_transition;
+    [~,D_z] = min(abs(depth_transition-cumsum(layer_size))); %index of depth for k transition
+
+
     % ***************
     % Inputs and constants:
     Soil_Temp_K = surface_temperature_C+273.15;
@@ -68,27 +79,43 @@ function [temperature_column_K] = tima_initialize(k_dry_std,rho_dry,m,theta_k,T_
             k(1) = 1/(VWC_column(t,1)/k_H2O+(k_dry_std*sqrt(temperature_column_K(day,t,1)/T_deep))^-1);
             for z = 2:NLAY-1 %layer loop
                 if t == 1 && day > 1 %First step in day (requires pulling from previous day)
-                    rho = rho_dry + rho_H2O*VWC_column(Day_Dur,z); %H2O dep
-                    Cp = tima_specific_heat_model_hillel(rho_dry,rho);
-                    k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day-1,end,z),T_std,VWC_column(Day_Dur,z),theta_k,m,RH(Day_Dur),material);
-                    %Subsurface Multip Factors (Kieffer, 2013)
-                    F1 = 2*dt*k(z)/((Cp*rho_dry*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
-                    F3 = (1+(layer_size(z+1)*k(z))/(layer_size(z)*k(z+1)))/(1+(layer_size(z-1)/layer_size(z)*k(z)/k(z-1)));
-                    F2 = -(1 + F3);
-                    %Temperature response
-                    dT = F1*(temperature_column_K(day-1,end,z+1)+F2*temperature_column_K(day-1,end,z)+F3*temperature_column_K(day-1,end,z-1));
-                    temperature_column_K(day,t,z)  = temperature_column_K(day-1,end,z) + dT;
+                    if strcmp(material_lower,"ice") && z > D_z
+                        k(z:end) = 632./temperature_column_K(day-1,end,z)+0.38-0.00197.*temperature_column_K(day-1,end,z); %Wood 2020/Andersson and Inaba 2005;
+                        temperature_column_K(day,t,z) = 273.15;
+                    elseif strcmp(material_lower,"ice") && z == D_z
+                        k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day-1,end,z),T_std,1,theta_k,m,RH(Day_Dur),material);
+                        temperature_column_K(day,t,z)  = T_deep;
+                    else
+                        rho = rho_dry + rho_H2O*VWC_column(Day_Dur,z); %H2O dep
+                        Cp = tima_specific_heat_model_hillel(rho_dry,rho);
+                        k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day-1,end,z),T_std,VWC_column(Day_Dur,z),theta_k,m,RH(Day_Dur),material);
+                        %Subsurface Multip Factors (Kieffer, 2013)
+                        F1 = 2*dt*k(z)/((Cp*rho_dry*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
+                        F3 = (1+(layer_size(z+1)*k(z))/(layer_size(z)*k(z+1)))/(1+(layer_size(z-1)/layer_size(z)*k(z)/k(z-1)));
+                        F2 = -(1 + F3);
+                        %Temperature response
+                        dT = F1*(temperature_column_K(day-1,end,z+1)+F2*temperature_column_K(day-1,end,z)+F3*temperature_column_K(day-1,end,z-1));
+                        temperature_column_K(day,t,z)  = temperature_column_K(day-1,end,z) + dT;
+                    end
                 elseif t >= 2 %All other steps
-                    rho = rho_dry + rho_H2O*VWC_column(t-1,z); %H2O dep
-                    Cp = tima_specific_heat_model_hillel(rho_dry,rho);
-                    k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day,t-1,z),T_std,VWC_column(t-1,z),theta_k,m,RH(t-1),material);
-                    %Subsurface Multip Factors (Kieffer, 2013)
-                    F1 = 2*dt*k(z)/((Cp*rho_dry*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
-                    F3 = (1+(layer_size(z+1)*k(z))/(layer_size(z)*k(z+1)))/(1+(layer_size(z-1)/layer_size(z)*k(z)/k(z-1)));
-                    F2 = -(1 + F3);
-                    %Temperature response
-                    dT = F1*(temperature_column_K(day,t-1,z+1)+F2*temperature_column_K(day,t-1,z)+F3*temperature_column_K(day,t-1,z-1));
-                    temperature_column_K(day,t,z) = temperature_column_K(day,t-1,z)+dT;
+                    if strcmp(material_lower,"ice") && z > D_z
+                        k(z:end) = 632./temperature_column_K(day,t-1,z)+0.38-0.00197.*temperature_column_K(day,t-1,z); %Wood 2020/Andersson and Inaba 2005;
+                        temperature_column_K(day,t,z) = 273.15;
+                    elseif strcmp(material_lower,"ice") && z == D_z
+                        k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day,t-1,z),T_std,1,theta_k,m,RH(t-1),material);
+                        temperature_column_K(day,t,z)  = T_deep;
+                    else
+                        rho = rho_dry + rho_H2O*VWC_column(t-1,z); %H2O dep
+                        Cp = tima_specific_heat_model_hillel(rho_dry,rho);
+                        k(z) = tima_conductivity_model_lu2007(k_dry_std,temperature_column_K(day,t-1,z),T_std,VWC_column(t-1,z),theta_k,m,RH(t-1),material);
+                        %Subsurface Multip Factors (Kieffer, 2013)
+                        F1 = 2*dt*k(z)/((Cp*rho_dry*layer_size(z)^2)*(1+layer_size(z+1)/layer_size(z)*k(z)/k(z+1)));
+                        F3 = (1+(layer_size(z+1)*k(z))/(layer_size(z)*k(z+1)))/(1+(layer_size(z-1)/layer_size(z)*k(z)/k(z-1)));
+                        F2 = -(1 + F3);
+                        %Temperature response
+                        dT = F1*(temperature_column_K(day,t-1,z+1)+F2*temperature_column_K(day,t-1,z)+F3*temperature_column_K(day,t-1,z-1));
+                        temperature_column_K(day,t,z) = temperature_column_K(day,t-1,z)+dT;
+                    end
                 end                 
             end
         end
