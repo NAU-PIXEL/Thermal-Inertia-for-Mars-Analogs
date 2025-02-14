@@ -83,31 +83,30 @@ emissivity = Addldata{2};
 T_std = Addldata{3};
 material = Addldata{4};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
 material_lower = Addldata{5};%(options: basalt,amorphous,granite,sandstone,clay,salt,ice)
-Depth_Max = Addldata{6};%m
-evap_depth = Addldata{7}; %Static evap depth (0.075 is reasonable for unsaturated sandy soils)
-VWC_dug_depth = [Addldata{8},Addldata{9},Addldata{10},Addldata{11}]./100; %Depth in m of probe elements
-Vars_init = [Addldata{12};Addldata{13};Addldata{14};Addldata{15};Addldata{16};Addldata{17};Addldata{18};Addldata{19}];
-% Check if the input materialType is valid
-if ~ismember(material, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'})
+if ~ismember(material, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'}) || ~ismember(material_lower, {'basalt', 'amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'})
     error('Error: The material type "%s" is not valid. Please choose from: %s', ...
           materialType, strjoin(validMaterials, ', '));
 end
-% Simulation Parameters
-NDAYS = Addldata{20};
-nwalkers = Addldata{21}; %100
-nstep = Addldata{22}; %10000
-burnin_mcmc = Addldata{23}; %fraction of results to omit
-burnin_fit = Addldata{24}; %fraction of results to omit
-sigma = Addldata{25}; % dictates sinsitivity of walkers to change
-nvars = Addldata{26};
+Depth_Max = Addldata{6};%m
+evap_depth = Addldata{7}; %Static evap depth (0.075 is reasonable for unsaturated sandy soils)
+Vars_init = [Addldata{8};Addldata{9};Addldata{10};Addldata{11};Addldata{12};Addldata{13};Addldata{14};Addldata{15}];
+mantle_thickness = Addldata{16}; %minutes
+k_dry_std_mantle = Addldata{17};
+t_step = Addldata{18}; %minutes
+NDAYS = Addldata{19};
+nwalkers = Addldata{20}; %100
+nstep = Addldata{21}; %10000
+burnin_mcmc = Addldata{22}; %fraction of results to omit
+burnin_fit = Addldata{23}; %fraction of results to omit
+sigma = Addldata{24}; % dictates sinsitivity of walkers to change
+nvars = Addldata{25};
 minit = zeros(length(Vars_init),nwalkers);
 rng(49)  % For reproducibility
 for i = 1:nwalkers
     minit(:,i) = Vars_init + sigma*Vars_init.*randn(length(Vars_init),1);
 end
-t_step = Addldata{27}; %minutes
-mantle_thickness = Addldata{28}; %minutes
-k_dry_std_mantle = Addldata{29};
+VWC_dug_depth = [Addldata{26},Addldata{27},Addldata{28},Addldata{29}]./100; %Depth in m of probe elements
+
 %% Resample
 %Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
 if t_step >= 1
@@ -187,6 +186,7 @@ end
 VWC_Smooth_Window = 50/(dt/60);
 Dug_VWC_smooth = smoothdata(Dug_VWC,'gaussian',VWC_Smooth_Window);
 
+if ~ismember('WS_ms_Avg', Data.Properties.VariableNames);Data.WS_ms_Avg = Data.mean_wind_spd_ms;end
 WindSpeed_ms_10 = Data.WS_ms_Avg; % Wind Speed from sensor @ ~10 ft (3 m) height
 WindSpeed_ms_10_smooth = smoothdata(WindSpeed_ms_10,'gaussian',Smooth_Window); %wind is noisy, so this smoothes it
 
@@ -318,11 +318,11 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
 
 %% Inputs:
 %   Time data - struct of timeseries data variables 
+%   Time data - struct of timeseries data variables 
       TData.air_Temp_C=Air_Temp_C;
       TData.DF=f_diff;
       TData.VWC_column=VWC_column;
       TData.evap_depth=evap_depth.*ones(size(Air_Temp_C));
-      TData.humidity=Humidity;
       TData.humidity=Humidity;
       TData.pressure_air_Pa=Pressure_air_Pa;
       TData.r_long_upper=R_Long_Upper;
@@ -332,9 +332,9 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       TData.solarzenith_apparent=SolarZenith_Apparent;
       TData.timed_albedo=Albedo;
       TData.TIMESTAMP = Data.TIMESTAMP;
-      TData.temps_to_fit=Temps_to_fit;
+      TData.temps_to_fit_interp=Interpolated_Temp;
       TData.windspeed_horiz_ms=WindSpeed_ms_10;
-      TData.temp_column = Dug_Temp;
+      TData.temp_column=Dug_Temp;
 
 %   Model Data - Struct of static and model format variables
       MData.burnin_fit=burnin_fit;

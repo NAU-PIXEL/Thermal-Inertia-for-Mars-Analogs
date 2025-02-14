@@ -20,7 +20,7 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 % varargin options:
 %   'IncreaseSampling': Option to increase sampling rate if model does not
 %       converge. Increases compute time, but avoids nonconvergence. (default=false) (logical)
-%   'Initialize': Option to reinitialize subsurface temperatures for each run. Increases compute time, 
+%   'Initialize': Option to reInitialize subsurface temperatures for each run. Increases compute time, 
 %       but avoids dramatic shifts with parameter optimization leading to instability. (default=false) (logical)
 %   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
 %       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
@@ -82,7 +82,7 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %       MData.mantle_thickness: [m] thickness of topmost mantling layer. (scalar)
 %       MData.material: ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at the surface (char)
 %       MData.material_lower:  ['basalt' 'amorphous' 'granite' 'clay' 'salt' 'ice']  primary mineralogy at depth (char)
-%       MData.minit: Vector of initialized test variables with as many
+%       MData.minit: Vector of Initialized test variables with as many
 %           randomized samples as desired for fitting, 50 is good such that
 %           vector is nvarx50 (2D vector)
 %       MData.notes: Details to record in data structure (string)
@@ -138,8 +138,8 @@ Mode = p.Mode;
 Parallel= p.Parallel;
 SaveModels = p.SaveModels;
 MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
-initialize = p.Initialize;
-increase_sampling = p.IncreaseSampling;
+Initialize = p.Initialize;
+IncreaseSampling = p.IncreaseSampling;
 
 if strcmp(Mode,'1layer')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
@@ -148,7 +148,7 @@ if strcmp(Mode,'1layer')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,...
         'material',MData.material,'mantle_thickness',MData.mantle_thickness,...
-        'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
+        'k_dry_std_mantle',MData.k_dry_std_mantle,'IncreaseSampling',IncreaseSampling,'Initialize',Initialize);
     MData.minit = MData.minit(1:6,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75];
@@ -159,7 +159,7 @@ elseif strcmp(Mode,'2layer')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',FitVar(7),...
         'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
+            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'IncreaseSampling',IncreaseSampling,'Initialize',Initialize);
     MData.minit = MData.minit(1:8,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024 0];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7 5];
@@ -170,7 +170,7 @@ elseif strcmp(Mode,'2layer_fixed_depth') % This won't work with MCMC in the set 
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',...
         MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
+            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'IncreaseSampling',IncreaseSampling,'Initialize',Initialize);
     MData.minit = MData.minit([1:6 8],:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7];
@@ -181,7 +181,7 @@ elseif strcmp(Mode,'2layer_fixed_lower')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
         'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
-            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'increase_sampling',increase_sampling,'initialize',initialize);
+            'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle,'IncreaseSampling',IncreaseSampling,'Initialize',Initialize);
     MData.minit = MData.minit(1:7,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 5];
