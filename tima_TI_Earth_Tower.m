@@ -1,4 +1,4 @@
-function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
+function [models,names,RESULTS] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %% TIMA_TI_EARTH_TOWER (Thermal Inertia for Mars Analogs)
 %   Surface energy balance model for deriving thermal inertia in terrestrial sediments using diurnal
 %   observations taken in the field to fit 1D multi-parameter model.
@@ -16,6 +16,7 @@ function [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR)
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer','Parallel',true,'SaveModels',true)
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','2layer_fixed_lower','Parallel',true,'SaveModels',true,'Initialize',true);
 %
 % varargin options:
 %   'IncreaseSampling': Option to increase sampling rate if model does not
@@ -140,6 +141,7 @@ SaveModels = p.SaveModels;
 MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
 Initialize = p.Initialize;
 IncreaseSampling = p.IncreaseSampling;
+names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'Depth Tansition (m)' 'k-dry-300-lower (W/mK)'};
 
 if strcmp(Mode,'1layer')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
@@ -189,7 +191,7 @@ else
     error('Mode entered does not match available options.')
 end
 %% Optimiztion
-optimize_MCMC = 1; %Option to use MCMC or Surrogate Opt
+optimize_MCMC = 0; %Option to use MCMC or Surrogate Opt
 if optimize_MCMC == 1
     k_air = 0.024; % Tsilingiris 2008
     k_H2O = 0.61;
@@ -234,45 +236,84 @@ if optimize_MCMC == 1
     for r=1:M
         quant=quantile(models(:,r),[0.16,0.5,0.84]);
         RESULTS(:,r) = quant;
-    end
-    
+    end    
     fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
     Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
     TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
     TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
     TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
+    % Make corner Plot
+    % ***************
+    % NAMED PARAMETERS:
+    %   range: Restrict visual limits to central [99.5] percentile.
+    %   names: A cell of strings with labels for each parameter in m.
+    %   ks: enable kernel smoothing density instead of histograms [false]
+    %   support: a 2xM matrix with upper and lower limits.
+    %   ess: effective sample size. [default: auto-determine ess using EACORR.]
+    %        - used to adjust bandwidth estimates in kernel density estimates.
+    %   scatter: show scatter plot instead of 2d-kernel density estimate [true if #points<2000]. 
+    %   fullmatrix: display upper corner of plotmatrix. [false]
+    %   color: A color-theme for the plot. [.5 .5 .5].
+    %   grid: show grid. [false].
+    % ***************
+    figure
+    olive = [110/255,117/255,14/255];
+    [~,RESULTS] = tima_ecornerplot(models,'color',olive,'names',names,'grid',true,'ks',true);
+    % Print Log File 
+        c = fix(clock);
+        fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
+        if SaveModels == true && optimize_MCMC == 1
+            save(fullfile(outDIR, [fname(1:end-4) '_output.mat']),'models','names','RESULTS')
+        end
+        fid = fopen(fullfile(outDIR, fname), 'wt');
+        if fid == -1
+          error('Cannot open log file.');
+        end
+        fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
+        fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1));
+        for i = 1:MData.nvars
+            fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
+        end
+        fprintf(fid,'Goodness of fit: %0.2f\n',fval);
+        fprintf(fid,'RESULTS [16th pctl, 50th pctl, 84th pctl]:\n');
+        for i = 1:MData.nvars
+            fprintf(fid,'%s = %0.4f, %0.4f, %0.4f\n',names{:,i},RESULTS(:,i));
+        end
+        fprintf(fid,'TI = %0.4f, %0.4f, %0.4f\n',TIm,TI,TIp);
+        fclose(fid);
 else
-    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Parallel,'MaxFunctionEvaluations',MData.nstep);
+    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Parallel,'MaxFunctionEvaluations',250);
     Obj = @(theta) tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(theta,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
     problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts) ; 
+    tic
     [RESULTS_holder,fval] = surrogateopt(problem);
+    elapsedTime = toc
     RESULTS(:) = RESULTS_holder';
+    models = [];
     Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
-    TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
-    TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
-    TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
+    TI =  sqrt(RESULTS(1)*MData.density*Cp_std);
+    tima_plot_results_mean(TData,MData,RESULTS,names);
+    % Print Log File 
+        c = fix(clock);
+        fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
+        if SaveModels == true && optimize_MCMC == 1
+            save(fullfile(outDIR, [fname(1:end-4) '_output.mat']),'models','names','RESULTS')
+        end
+        fid = fopen(fullfile(outDIR, fname), 'wt');
+        if fid == -1
+          error('Cannot open log file.');
+        end
+        fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
+        fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1));
+        for i = 1:MData.nvars
+            fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
+        end
+        fprintf(fid,'Goodness of fit: %0.2f\n',fval);
+        fprintf(fid,'RESULTS [16th pctl, 50th pctl, 84th pctl]:\n');
+        for i = 1:MData.nvars
+            fprintf(fid,'%s = %0.4f\n',names{:,i},RESULTS(i));
+        end
+        fprintf(fid,'TI = %0.4f\n',TI);
+        fclose(fid);
 end
-%% Print Log File 
-c = fix(clock);
-fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
-names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'Depth Tansition (m)' 'k-dry-300-lower (W/mK)'};
-if SaveModels == true && optimize_MCMC == 1
-    save(fullfile(outDIR, [fname(1:end-4) '_Models.mat']),'models','names')
-end
-fid = fopen(fullfile(outDIR, fname), 'wt');
-if fid == -1
-  error('Cannot open log file.');
-end
-fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
-fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1));
-for i = 1:MData.nvars
-    fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
-end
-fprintf(fid,'Goodness of fit: %0.2f\n',fval);
-fprintf(fid,'RESULTS [16th pctl, 50th pctl, 84th pctl]:\n');
-for i = 1:MData.nvars
-    fprintf(fid,'%s = %0.4f, %0.4f, %0.4f\n',names{:,i},RESULTS(:,i));
-end
-fprintf(fid,'TI = %0.4f, %0.4f, %0.4f\n',TIm,TI,TIp);
-fclose(fid);
 end

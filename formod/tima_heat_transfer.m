@@ -313,7 +313,7 @@ for t = 2:length(air_temp_C)
         if strcmp(material_lower,"ice") && T(t,z) > 273.15 && z >= D_z
             q_melt = (T(t,z)-273.15)*(Cp*rho*layer_size(z)); %heat in to ice J/m^2
             m_melt(z) = m_melt(z)+q_melt/334000; %heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
-            if m_melt(z) > 1500*layer_size(z); D_z = D_z+1; end %melting
+            if m_melt(z) > 1500*layer_size(z); D_z = D_z+1; end %melting %TODO: where is 1500 from? (Desnity of ice kg/m^3 plus some?)
             %To add: elseif freezing
             T(t,z) = 273.15;
         end

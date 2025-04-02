@@ -1,4 +1,4 @@
-function [] = tima_plot_results(TData,MData,models,names,varargin)
+function [] = tima_plot_results_mean(TData,MData,RESULTS,names,varargin)
 %% TIMA_PLOT_RESULTS
 %   Script to plot MCMC histograms and visualize energy fluxes.
 %
@@ -92,30 +92,11 @@ p.addRequired('MData',@isstruct);
 p.addRequired('models');
 p.addParameter('Mode','1layer',@ischar);
 p.addRequired('names',@iscellstr);
-p.parse(TData, MData, models, names,varargin{:});
+p.parse(TData, MData, RESULTS, names,varargin{:});
 p=p.Results;
 Mode = p.Mode;
 MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
-
-%% Make corner Plot
-% ***************
-% NAMED PARAMETERS:
-%   range: Restrict visual limits to central [99.5] percentile.
-%   names: A cell of strings with labels for each parameter in m.
-%   ks: enable kernel smoothing density instead of histograms [false]
-%   support: a 2xM matrix with upper and lower limits.
-%   ess: effective sample size. [default: auto-determine ess using EACORR.]
-%        - used to adjust bandwidth estimates in kernel density estimates.
-%   scatter: show scatter plot instead of 2d-kernel density estimate [true if #points<2000]. 
-%   fullmatrix: display upper corner of plotmatrix. [false]
-%   color: A color-theme for the plot. [.5 .5 .5].
-%   grid: show grid. [false].
-% ***************
-figure
-olive = [110/255,117/255,14/255];
-[H,RESULTS] = tima_ecornerplot(models,'color',olive,'names',names,'grid',true,'ks',true);
-
-
+if size(RESULTS,1)>1, RESULTS = RESULTS(2,:);end
 %% Plot Comparison
 if strcmp(Mode,'1layer')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
@@ -178,7 +159,7 @@ elseif strcmp(Mode,'2layer_fixed_lower')
 else
     error('Mode entered does not match available options.')
 end     
-[T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = formod_fluxes(RESULTS(2,:));
+[T_surf_C,T_sub_C,q_latent,k_eff_dt,q_conv,q_rad,q_G] = formod_fluxes(RESULTS);
 
 figure
 hold on
@@ -193,11 +174,9 @@ M = plot(TData.TIMESTAMP(MData.fit_ind),T_surf_C((MData.fit_ind),1),'r', 'LineWi
 
 hold off
 legend([F(2) M], 'Interpreter','none')
-fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(RESULTS(2,:),MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
+fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(RESULTS,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
 Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density);
-TI =  sqrt(RESULTS(2,1)*MData.density*Cp_std);
-TIp = sqrt(RESULTS(3,1)*MData.density*Cp_std);
-TIm = sqrt(RESULTS(1,1)*MData.density*Cp_std);
+TI =  sqrt(RESULTS(1)*MData.density*Cp_std);
 ttl = sprintf('TI Top [Jm^{-2}K^{-1}s^{-12}] = %0.2f, chi_v = %0.2f',TI,fval);%Calculate TI from results
 title(ttl)
 
