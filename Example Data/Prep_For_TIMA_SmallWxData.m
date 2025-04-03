@@ -183,6 +183,28 @@ if ismember('VWC_4_Avg',Data.Properties.VariableNames)
     Dug_VWC(:,4) = Data.VWC_4_Avg;
     Dug_Temp(:,4) = Data.T_4_Avg; %In Situ near surf Soil Temperature from nearest probe
 end
+%Define Lower Boundary conditions
+T_Deep = mean(Dug_Temp(:,end))+273.15;%mean([max(Soil_Temp_C_Dry),min(Soil_Temp_C_Dry)])+273.15; %Static mean of near surf temp
+for i = 1:size(Dug_Temp,2)
+    T_mn(i) = mean([max(Dug_Temp(:,i)) min(Dug_Temp(:,i))]);
+end
+figure
+plot(VWC_dug_depth,T_mn)
+xlabel('Depth (m)');
+ylabel('Mean thermistor temperature (C)')
+title('Plot to assess subsurface temeprature gradient, and guess ice depth')
+if strcmp(material_lower,"ice") %Adjust initial depth of transition guess and update depth max to accommodate
+    xq = 0; %freezing point
+    vq = interp1(T_mn,VWC_dug_depth,xq,'linear','extrap');
+    Vars_init(7) = vq;
+    Depth_Max = 1.5*Vars_init(7);
+    T_Deep = 273.15;
+else
+    xq = Depth_Max; %freezing point
+    vq = interp1(VWC_dug_depth,T_mn,xq,'linear','extrap');
+    T_Deep = vq;
+end
+
 VWC_Smooth_Window = 50/(dt/60);
 Dug_VWC_smooth = smoothdata(Dug_VWC,'gaussian',VWC_Smooth_Window);
 
@@ -195,8 +217,6 @@ FLAY = 0.0075;%0:0.005:1+0.0025*t_step;%:0.0005:0.1;%0:0.005:1+0.0025*t_step;%lo
 
 % ***************
 clear T_Test
-%Define Lower Boundary conditions
-T_Deep = mean(Dug_Temp(:,end))+273.15;%mean([max(Soil_Temp_C_Dry),min(Soil_Temp_C_Dry)])+273.15; %Static mean of near surf temp
 
 density_plus = density + 997*mean(Dug_VWC(:,end),'omitnan'); %Dry density + water content
 Cp_Deep = tima_specific_heat_model_hillel(density,density_plus);

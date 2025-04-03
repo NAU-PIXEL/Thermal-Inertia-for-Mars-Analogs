@@ -15,8 +15,8 @@ function [models,names,RESULTS] = tima_TI_Earth_Tower(TData,MData,outDIR,varargi
 % Syntax
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR)
 %   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,varargin)
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer','Parallel',true,'SaveModels',true)
-%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','2layer_fixed_lower','Parallel',true,'SaveModels',true,'Initialize',true);
+%   [models,names] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','1layer','Parallel',true,'SaveResults',true)
+%   [models,names,results] = tima_TI_Earth_Tower(TData,MData,outDIR,'Mode','2layer_fixed_lower','Parallel',true,'SaveResults',true,'Initialize',true);
 %
 % varargin options:
 %   'IncreaseSampling': Option to increase sampling rate if model does not
@@ -28,7 +28,7 @@ function [models,names,RESULTS] = tima_TI_Earth_Tower(TData,MData,outDIR,varargi
 %       layer and the transition depth) (default='1layer') (string)
 %   'Parallel': Run in ensemble of walkers in parallel. (default=false)
 %       (logical)
-%   'SaveModels': Option to save the models output to a .mat file
+%   'SaveResults': Option to save the model's output to a .mat file
 %       (default=false) (logical)
 %
 % Input Parameters
@@ -130,17 +130,19 @@ p.addRequired('MData',@isstruct);
 p.addRequired('outDIR',@ischar);
 p.addParameter('Mode','1layer',@ischar);
 p.addParameter('Parallel',false,@islogical);
-p.addParameter('SaveModels',false,@islogical);
+p.addParameter('SaveResults',false,@islogical);
 p.addParameter('IncreaseSampling',false,@islogical);
 p.addParameter('Initialize',false,@islogical);
+p.addParameter('MCMC',false,@islogical);
 p.parse(TData, MData, outDIR, varargin{:});
 p=p.Results;
 Mode = p.Mode;
 Parallel= p.Parallel;
-SaveModels = p.SaveModels;
+SaveResults = p.SaveResults;
 MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
 Initialize = p.Initialize;
 IncreaseSampling = p.IncreaseSampling;
+MCMC = p.MCMC; %Option to use MCMC or Surrogate Opt
 names = {'k-dry-300-upper (W/mK)' 'Pore network con. par. (mk)' 'Surf. ex. coef. (CH)' 'Surf. ex. coef. (CE)' 'Soil Moist. Infl. (thetak) (%)' 'Soil Moist. Infl. (thetaE) (%)' 'Depth Tansition (m)' 'k-dry-300-lower (W/mK)'};
 
 if strcmp(Mode,'1layer')
@@ -154,6 +156,7 @@ if strcmp(Mode,'1layer')
     MData.minit = MData.minit(1:6,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75];
+    MData.nvars = 6;
 elseif strcmp(Mode,'2layer')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -165,6 +168,7 @@ elseif strcmp(Mode,'2layer')
     MData.minit = MData.minit(1:8,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024 0];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7 5];
+    MData.nvars = 8;
 elseif strcmp(Mode,'2layer_fixed_depth') % This won't work with MCMC in the set up in ln prior right now
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -176,6 +180,7 @@ elseif strcmp(Mode,'2layer_fixed_depth') % This won't work with MCMC in the set 
     MData.minit = MData.minit([1:6 8],:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0.024];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 3.7];
+    MData.nvars = 7;
 elseif strcmp(Mode,'2layer_fixed_lower')
     formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
@@ -187,12 +192,12 @@ elseif strcmp(Mode,'2layer_fixed_lower')
     MData.minit = MData.minit(1:7,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01 0];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75 5];
+    MData.nvars = 7;
 else
     error('Mode entered does not match available options.')
 end
 %% Optimiztion
-optimize_MCMC = 0; %Option to use MCMC or Surrogate Opt
-if optimize_MCMC == 1
+if MCMC == 1
     k_air = 0.024; % Tsilingiris 2008
     k_H2O = 0.61;
     if strcmp(MData.material,'basalt') %amorphous', 'granite', 'sandstone', 'clay', 'salt', 'ice'
@@ -259,10 +264,11 @@ if optimize_MCMC == 1
     figure
     olive = [110/255,117/255,14/255];
     [~,RESULTS] = tima_ecornerplot(models,'color',olive,'names',names,'grid',true,'ks',true);
+    tima_plot_results(TData,MData,RESULTS(2,:),names,'Mode',Mode);
     % Print Log File 
         c = fix(clock);
         fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
-        if SaveModels == true && optimize_MCMC == 1
+        if SaveResults == true && optimize_MCMC == 1
             save(fullfile(outDIR, [fname(1:end-4) '_output.mat']),'models','names','RESULTS')
         end
         fid = fopen(fullfile(outDIR, fname), 'wt');
@@ -270,7 +276,10 @@ if optimize_MCMC == 1
           error('Cannot open log file.');
         end
         fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
-        fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1));
+        if MCMC == true
+          fprintf(fid,'Markov Chain Monte Carlo Optimization');
+        end
+        fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f, Mantle Thickness (m): %0.4f, k-dry-300-mantle (W/mK): %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1),MData.mantle_thickness,MData.k_dry_std_mantle);
         for i = 1:MData.nvars
             fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
         end
@@ -282,34 +291,38 @@ if optimize_MCMC == 1
         fprintf(fid,'TI = %0.4f, %0.4f, %0.4f\n',TIm,TI,TIp);
         fclose(fid);
 else
-    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Parallel,'MaxFunctionEvaluations',250);
+    Nsteps = 250;
+    opts = optimoptions('surrogateopt','InitialPoints',MData.minit,'UseParallel',Parallel,'MaxFunctionEvaluations',Nsteps);
     Obj = @(theta) tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(theta,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
     problem = struct('solver','surrogateopt','lb',MData.lbound,'ub',MData.ubound,'objective',Obj,'options',opts) ; 
     tic
     [RESULTS_holder,fval] = surrogateopt(problem);
-    elapsedTime = toc
+    elapsedTime = toc;
     RESULTS(:) = RESULTS_holder';
     models = [];
     Cp_std = tima_specific_heat_model_DV1963(MData.density,MData.density,300,MData.material);
     TI =  sqrt(RESULTS(1)*MData.density*Cp_std);
-    tima_plot_results_mean(TData,MData,RESULTS,names);
+    tima_plot_results(TData,MData,RESULTS,names,'Mode',Mode);
     % Print Log File 
         c = fix(clock);
         fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
-        if SaveModels == true && optimize_MCMC == 1
-            save(fullfile(outDIR, [fname(1:end-4) '_output.mat']),'models','names','RESULTS')
+        if SaveResults == true
+            save(fullfile(outDIR, [fname(1:end-4) '_output.mat']),'names','RESULTS')
         end
         fid = fopen(fullfile(outDIR, fname), 'wt');
         if fid == -1
           error('Cannot open log file.');
         end
         fprintf(fid,'1D thermal model results considering one location (note: %s).\nDatetime: %s Runtime: %0.1f s\n',MData.notes,fname(13:end-4),elapsedTime);
-        fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f\nInitial Inputs:\n',MData.dt,MData.nstep,MData.nwalkers,length(MData.layer_size),MData.layer_size(1));
+        if MCMC == false
+          fprintf(fid,'Surrogate Optimization\n');
+        end
+        fprintf(fid,'Time step (s): %0.0f\nNsteps: %0.0f\nNwalkers: %0.0f\n# of Layers: %0.0f, Top Layer Size (m):  %0.4f, Mantle Thickness (m): %0.4f, k-dry-300-mantle (W/mK): %0.4f\nInitial Inputs:\n',MData.dt,Nsteps,MData.nwalkers,length(MData.layer_size),MData.layer_size(1),MData.mantle_thickness,MData.k_dry_std_mantle);
         for i = 1:MData.nvars
             fprintf(fid,'%s = %0.4f\n',names{:,i},MData.vars_init(i));
         end
         fprintf(fid,'Goodness of fit: %0.2f\n',fval);
-        fprintf(fid,'RESULTS [16th pctl, 50th pctl, 84th pctl]:\n');
+        fprintf(fid,'RESULTS:\n');
         for i = 1:MData.nvars
             fprintf(fid,'%s = %0.4f\n',names{:,i},RESULTS(i));
         end

@@ -1,9 +1,9 @@
-function [] = tima_plot_results_mean(TData,MData,RESULTS,names,varargin)
+function [] = tima_plot_results(TData,MData,RESULTS,names,varargin)
 %% TIMA_PLOT_RESULTS
 %   Script to plot MCMC histograms and visualize energy fluxes.
 %
 % Syntax
-%   tima_plot_results(TData,MData,models,names,varargin)
+%   tima_plot_results(TData,MData,RESULTS,names,varargin)
 %
 % Description
 %   Script uses the measured surface temperature for 1 day on repeat as the forcing and then distrubutes heat
@@ -91,6 +91,7 @@ p.addRequired('TData',@isstruct);
 p.addRequired('MData',@isstruct);
 p.addRequired('models');
 p.addParameter('Mode','1layer',@ischar);
+p.addParameter('Initialize',true,@islogical);
 p.addRequired('names',@iscellstr);
 p.parse(TData, MData, RESULTS, names,varargin{:});
 p=p.Results;
@@ -99,12 +100,13 @@ MData.fit_ind = MData.fit_ind(ceil(MData.burnin_fit/MData.dt):end);
 if size(RESULTS,1)>1, RESULTS = RESULTS(2,:);end
 %% Plot Comparison
 if strcmp(Mode,'1layer')
-    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
-        FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-        TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-        TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
-        'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+    if p.Initialize
+        Subsurface_Temperatures = tima_initialize(RESULTS(1),MData.density,RESULTS(2),...
+        RESULTS(5),MData.T_std,MData.T_deep,TData.temps_to_fit_interp,MData.dt,MData.layer_size,...
+        TData.VWC_column,TData.humidity,MData.ndays,MData.material,'material_lower',MData.material);
+        MData.T_start(:) = Subsurface_Temperatures(end,end,:);
+        MData.T_start(1) = TData.temps_to_fit_interp(1)+273.15;
+    end
     formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
@@ -112,13 +114,13 @@ if strcmp(Mode,'1layer')
         TData.pressure_air_Pa,'material',MData.material,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
 elseif strcmp(Mode,'2layer')
-    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
-        FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-        TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-        TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
-        'depth_transition',FitVar(7),'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
-        'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+    if p.Initialize
+        Subsurface_Temperatures = tima_initialize(RESULTS(1),MData.density,RESULTS(2),...
+        RESULTS(5),MData.T_std,MData.T_deep,TData.temps_to_fit_interp,MData.dt,MData.layer_size,...
+        TData.VWC_column,TData.humidity,MData.ndays,MData.material,'material_lower',MData.material_lower,'depth_transition',RESULTS(7));
+        MData.T_start(:) = Subsurface_Temperatures(end,end,:);
+        MData.T_start(1) = TData.temps_to_fit_interp(1)+273.15;
+    end
     formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
@@ -127,13 +129,13 @@ elseif strcmp(Mode,'2layer')
         'depth_transition',FitVar(7),'k_dry_std_lower',FitVar(8),'material_lower',MData.material_lower,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
 elseif strcmp(Mode,'2layer_fixed_depth')
-    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
-        FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-        TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-        TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,'depth_transition',...
-        MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
-        'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+    if p.Initialize
+        Subsurface_Temperatures = tima_initialize(RESULTS(1),MData.density,RESULTS(2),...
+        RESULTS(5),MData.T_std,MData.T_deep,TData.temps_to_fit_interp,MData.dt,MData.layer_size,...
+        TData.VWC_column,TData.humidity,MData.ndays,MData.material,'material_lower',MData.material_lower,'depth_transition',MData.vars_init(7));
+        MData.T_start(:) = Subsurface_Temperatures(end,end,:);
+        MData.T_start(1) = TData.temps_to_fit_interp(1)+273.15;
+    end
     formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
@@ -142,13 +144,13 @@ elseif strcmp(Mode,'2layer_fixed_depth')
         MData.vars_init(7),'k_dry_std_lower',FitVar(7),'material_lower',MData.material_lower,...
         'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
 elseif strcmp(Mode,'2layer_fixed_lower')
-    formod = @(FitVar) tima_full_model(FitVar(1),FitVar(2),FitVar(3),...
-        FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
-        TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
-        TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
-        TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,'material',MData.material,...
-        'depth_transition',FitVar(7),'k_dry_std_lower',MData.vars_init(8),'material_lower',MData.material_lower,...
-        'mantle_thickness',MData.mantle_thickness,'k_dry_std_mantle',MData.k_dry_std_mantle);
+    if p.Initialize
+        Subsurface_Temperatures = tima_initialize(RESULTS(1),MData.density,RESULTS(2),...
+        RESULTS(5),MData.T_std,MData.T_deep,TData.temps_to_fit_interp,MData.dt,MData.layer_size,...
+        TData.VWC_column,TData.humidity,MData.ndays,MData.material,'material_lower',MData.material_lower,'depth_transition',RESULTS(7));
+        MData.T_start(:) = Subsurface_Temperatures(end,end,:);
+        MData.T_start(1) = TData.temps_to_fit_interp(1)+273.15;
+    end
     formod_fluxes = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
         FitVar(4),FitVar(5),FitVar(6),MData.density,MData.dt,MData.T_std,TData.air_Temp_C,TData.r_short_upper,...
         TData.r_short_lower,TData.r_long_upper,TData.windspeed_horiz_ms,MData.T_deep,MData.T_start,MData.layer_size,...
@@ -174,7 +176,7 @@ M = plot(TData.TIMESTAMP(MData.fit_ind),T_surf_C((MData.fit_ind),1),'r', 'LineWi
 
 hold off
 legend([F(2) M], 'Interpreter','none')
-fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),tima_formod_subset(RESULTS,MData.fit_ind,formod),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
+fval = tima_fval_chi2v(TData.temps_to_fit_interp(MData.fit_ind),T_surf_C(MData.fit_ind),MData.erf(TData.temps_to_fit_interp(MData.fit_ind)),MData.nvars);
 Cp_std = tima_specific_heat_model_hillel(MData.density,MData.density);
 TI =  sqrt(RESULTS(1)*MData.density*Cp_std);
 ttl = sprintf('TI Top [Jm^{-2}K^{-1}s^{-12}] = %0.2f, chi_v = %0.2f',TI,fval);%Calculate TI from results
@@ -193,19 +195,14 @@ title(ttl)
 % legend
 
 %% Plot sub fluxes!
-figure
-hold on
-ylabel('Temperature (C)');
-plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit_interp(MData.fit_ind),'k','LineWidth', 0.5,'DisplayName','FLIR Surface Observations');
-title('FLIR Surface Observations')
-
-
+%Sensible Heat
 figure
 hold on
 ylabel('W/m^2');
 plot(TData.TIMESTAMP(MData.fit_ind),q_conv(MData.fit_ind),'g', 'LineWidth', 1,'DisplayName','sensible heat');
 title('Sensible Heat Flux')
 
+%Thermal Conductivity
 figure
 hold on
 ylabel('W/mK');
@@ -223,6 +220,7 @@ plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),1),'k:', 'LineWidth'
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),2),'k', 'LineWidth', 1 ,'DisplayName','Layer 2');
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),3:end-3),'b', 'LineWidth', 0.25 ,'DisplayName','Middle Layers');
 plot(TData.TIMESTAMP(MData.fit_ind),TData.temp_column((MData.fit_ind),:),'g', 'LineWidth', 0.25 ,'DisplayName','Measured');
+plot(TData.TIMESTAMP(MData.fit_ind),TData.temps_to_fit_interp(MData.fit_ind),'r','LineWidth', 0.25,'DisplayName','FLIR Surface Observations');
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),end-2),'k-.', 'LineWidth', 1 ,'DisplayName','Layer end-2');
 plot(TData.TIMESTAMP(MData.fit_ind),T_sub_C((MData.fit_ind),end-1),'k--', 'LineWidth', 1 ,'DisplayName','Layer end-1');
 hold off
@@ -240,14 +238,17 @@ figure
 for time = 1:length(TData.temps_to_fit_interp)
     full_latent(time) = sum(q_latent(time,:));
 end
-hold on
-ylabel('W/m^2');
+VWC_max = max(TData.VWC_column,[],2);
 plot(TData.TIMESTAMP(MData.fit_ind),full_latent(MData.fit_ind),'c', 'LineWidth', 1 ,'DisplayName','latent heat');
+ylabel('W/m^2');
+yyaxis right
+plot(TData.TIMESTAMP(MData.fit_ind),VWC_max(MData.fit_ind),'k', 'LineWidth', 0.5 ,'DisplayName','Maximum Column VWC (%)');
+ax = gca; ax.YAxis(1).Color = 'c'; ax.YAxis(2).Color = 'k';
+ylabel('Maximum Column VWC (%)');
 title('Surface Latent Heat Flux')
 
 figure
-hold on
-ylabel('W/m^2');
 plot(TData.TIMESTAMP(MData.fit_ind),q_G(MData.fit_ind),'b', 'LineWidth', 1,'DisplayName','ground heat');
+ylabel('W/m^2');
 title('Ground Heat Flux')
 end
