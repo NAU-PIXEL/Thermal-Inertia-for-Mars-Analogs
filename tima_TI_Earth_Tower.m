@@ -23,6 +23,9 @@ function [models,names,RESULTS] = tima_TI_Earth_Tower(TData,MData,outDIR,varargi
 %       converge. Increases compute time, but avoids nonconvergence. (default=false) (logical)
 %   'Initialize': Option to reInitialize subsurface temperatures for each run. Increases compute time, 
 %       but avoids dramatic shifts with parameter optimization leading to instability. (default=false) (logical)
+%   'MCMC': Option to run optimization with Markov Chain Monte Carlo
+%       Simulations. If false, will run with faster but less global
+%       surrogate optimization. (default=false) (logical)
 %   'Mode': Fitting mode (options: '1layer', '2layer', '2layer_fixed_lower','2layer_fixed_depth' 
 %       -- 2Layer includes fitting of bulk dry thermal conductivity of lower 
 %       layer and the transition depth) (default='1layer') (string)
@@ -152,7 +155,10 @@ if strcmp(Mode,'1layer')
         TData.VWC_column,TData.evap_depth,TData.humidity,MData.emissivity,...
         TData.pressure_air_Pa,TData.temps_to_fit_interp,MData.ndays,...
         'material',MData.material,'mantle_thickness',MData.mantle_thickness,...
-        'k_dry_std_mantle',MData.k_dry_std_mantle,'IncreaseSampling',IncreaseSampling,'Initialize',Initialize);
+        'k_dry_std_mantle',MData.k_dry_std_mantle,'slope_angle',MData.slope_angle,...
+        'aspect_cwfromS',MData.aspect_cwfromS,'solar_azimuth_cwfromS',...
+        TData.solarazimuth_cwfromS,'solar_zenith_apparent',TData.solarzenith_apparent,...
+        'IncreaseSampling',IncreaseSampling,'Initialize',Initialize);
     MData.minit = MData.minit(1:6,:);
     MData.lbound = [0.024 0.01 1 1 0.05 0.01];
     MData.ubound = [3.7 1.3 1000 10000 0.9 0.75];
@@ -268,7 +274,7 @@ if MCMC == 1
     % Print Log File 
         c = fix(clock);
         fname = sprintf('tima_output_%02.0f%02.0f-%s.txt',c(4),c(5),date);
-        if SaveResults == true && optimize_MCMC == 1
+        if SaveResults == true
             save(fullfile(outDIR, [fname(1:end-4) '_output.mat']),'models','names','RESULTS')
         end
         fid = fopen(fullfile(outDIR, fname), 'wt');

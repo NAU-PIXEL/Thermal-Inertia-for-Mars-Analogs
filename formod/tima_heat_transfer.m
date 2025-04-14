@@ -157,6 +157,7 @@ T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 e_fxn = p.e_fxn;
 mantle_thickness = p.mantle_thickness;
 k_dry_std_mantle = p.k_dry_std_mantle;
+enable_melting = true; %switch to include ability of ice to melt
 % ***************
 
 % ***************
@@ -234,13 +235,14 @@ for t = 2:length(air_temp_C)
     else %variably shadowed/sloped terrain
         phi = solar_azimuth_cwfromS(t-1);
         Z = solar_zenith_apparent(t-1);
-        Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);Incidence(Incidence>1) = 1; Incidence(Incidence<-1) = -1;
+        Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);
+        Incidence(Incidence>1) = 1; Incidence(Incidence<0) = 0;
         if isempty(shadow_data)
-            q_rad(t) = (1-albedo(t-1))*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
+            q_rad(t) = (1-albedo(t-1))*Incidence*(1-f_diff(t-1))*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff(t-1)*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
         else
-            q_rad_full = (1-albedo)*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
+            q_rad_full = (1-albedo)*Incidence*(1-f_diff(t-1))*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff(t-1)*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
             Lit_Fraction = shadow_data(shadow_time_ind(t-1)); %Shadow = 0, unshadowed = 1;
-            q_rad(t) = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
+            q_rad(t) = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff(t-1)*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
         end
     end
     %*******************************
@@ -269,7 +271,7 @@ for t = 2:length(air_temp_C)
             k(z) = tima_conductivity_model_lu2007(k_dry_std_mantle,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material);
             rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
             Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
-        elseif z < D_z
+        elseif z < D_z % Top Layer
             if sum(layer_size(1:z)) <= evap_depth(t-1)
                 [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
             else
@@ -279,14 +281,14 @@ for t = 2:length(air_temp_C)
             k(z) = tima_conductivity_model_lu2007(kay_upper,T(t-1,z),T_std,VWC_column(t-1,z),theta_k,m,Soil_RH,material);
             rho = rho_dry_upper + rho_H2O*VWC_column(t-1,z); %H2O dep
             Cp = tima_specific_heat_model_DV1963(rho_dry_upper,rho,T(t-1,z),material);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
-        else
+        else %Lower Layer
             if strcmp(material_lower,"ice")
-                rho = 1500; %kg/m^3
-                Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);%tima_specific_heat_model_hillel(rho_dry_upper,rho);%
+                rho = (917+rho_dry_upper)/2; %kg/m^3 50% ice-rich permafrost by volume
+                Cp = tima_specific_heat_model_DV1963(rho,rho,T(t-1,z),material_lower);
                 q_evap_z = 0; %Evap_Coeff
                 %Soil_RH = 1;
                 k(z:end) = 632./T(t-1,z)+0.38-0.00197.*T(t-1,z); %Wood 2020/Andersson and Inaba 2005;
-            else
+            else %Not ice
                 if sum(layer_size(1:z)) <= evap_depth
                     [q_evap_z,Soil_RH] = tima_latent_heat_model_LP1992(CE,theta_E,pressure_air_pa(t-1),windspeed_horiz(t-1),RH(t-1),air_temp_K(t-1),T(t-1,z),VWC_column(t-1,z));
                 else
@@ -310,12 +312,14 @@ for t = 2:length(air_temp_C)
         %Temperature response
         dT = F1*(T(t-1,z+1)+F2*T(t-1,z)+F3*T(t-1,z-1))+dt/(Cp*rho*layer_size(z))*q_evap_z;
         T(t,z) = T(t-1,z)+dT;
-        if strcmp(material_lower,"ice") && T(t,z) > 273.15 && z >= D_z
-            q_melt = (T(t,z)-273.15)*(Cp*rho*layer_size(z)); %heat in to ice J/m^2
-            m_melt(z) = m_melt(z)+q_melt/334000; %heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
-            if m_melt(z) > 1500*layer_size(z); D_z = D_z+1; end %melting %TODO: where is 1500 from? (Desnity of ice kg/m^3 plus some?)
-            %To add: elseif freezing
-            T(t,z) = 273.15;
+        if strcmp(material_lower,"ice") && z >= D_z && T(t,z) > 273.15
+            if enable_melting==1 %Melt ice if enough energy?
+                q_ice = (T(t,z)-273.15)*(Cp*rho*layer_size(z));%heat in to ice J/m^2 assuming 50% purity (rho and Cp still as above)
+                m_melt(z) = m_melt(z)+q_ice/334000; %mass of ice melted added to prior mass. heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
+                if m_melt(z) > 917*0.5*layer_size(z); D_z = D_z+1; end %if mass is greater than total mass of ice in layer at 50%: melting. 917 = Desnity of ice kg/m^3 at 0C
+                %To add: elseif freezing
+            end
+            T(t,z) = 273.15;%set to 0 C if ice and above freezing, heat sink
         end
         q_latent(t,z) = q_evap_z;        
     end

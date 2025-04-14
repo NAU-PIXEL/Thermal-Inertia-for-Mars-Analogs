@@ -106,6 +106,8 @@ for i = 1:nwalkers
     minit(:,i) = Vars_init + sigma*Vars_init.*randn(length(Vars_init),1);
 end
 VWC_dug_depth = [Addldata{26},Addldata{27},Addldata{28},Addldata{29}]./100; %Depth in m of probe elements
+slope = Addldata{30};
+aspect_cwfromS = Addldata{31};
 
 %% Resample
 %Error on the FLIR measurements is +/- 5 C or 5% of readings in the -25°C to +135°C range
@@ -161,7 +163,8 @@ R_Short_Lower = Data.SWLower_Avg;
 R_Short_Lower(R_Short_Lower<0)=0;
 R_Short_Upper = Data.SWUpper_Avg;
 R_Short_Upper(R_Short_Upper<0)=0;
-Albedo = median(Data.SWLower_Avg(Data.SolarElevationCorrectedForAtmRefractiondeg>0)./Data.SWUpper_Avg(Data.SolarElevationCorrectedForAtmRefractiondeg>0)).*ones(size(Data.Albedo_Avg));
+Albedo = Data.Albedo_Avg;%median(Data.SWLower_Avg(Data.SolarElevationAngledeg>0)./Data.SWUpper_Avg(Data.SolarElevationAngledeg>0)).*ones(size(Data.Albedo_Avg));
+Albedo(Albedo>1) = 1;Albedo(Albedo<0)=0;
 R_Long_Upper = Data.LWUpperCo_Avg; %Temp Corrected sky IR radiance
 if ~ismember('AirTC', Data.Properties.VariableNames);Data.AirTC = Data.AirTC_Avg;end
 Air_Temp_C = Data.AirTC; %Air Temp
@@ -170,7 +173,7 @@ Pressure_air_Pa = Data.BP_mbar.*100; %barometric pressure - converted to Pa late
 Soil_Temp_C_Probe = Data.T_Avg; %In Situ near surf Soil Temperature from nearest Dry probe
 Dewpoint_C = (243.04.*log(Humidity)+17.625.*Air_Temp_C./(243.04+Air_Temp_C))./(17.625-log(Humidity./100)+17.625.*Air_Temp_C./(243.04+Air_Temp_C));
 SolarAzimuthCwfromS = 180 - Data.SolarAzimuthAngledegCwFromN;
-f_diff = Data.DF;
+f_diff = Data.DF;f_diff(isnan(f_diff))=1;
 SolarZenith_Apparent = 90-Data.SolarElevationCorrectedForAtmRefractiondeg;
 clear Dug_VWC Dug_Temp
 Dug_VWC(:,1) = Data.VWC_Avg;
@@ -265,8 +268,11 @@ for i = 1:length(stability_array) %Loop to optimize layer thickness (i.e. highes
         R_Short_Lower,R_Long_Upper,WindSpeed_ms_10,T_Deep,T_Start,Layer_size_B,...
         VWC_column,evap_depth.*ones(size(Air_Temp_C)),Humidity,emissivity,...
         Pressure_air_Pa,'albedo',Albedo,'material',material,...
-        'depth_transition',FitVar(7),'material_lower',material_lower,'mantle_thickness',mantle_thickness,'k_dry_std_mantle',k_dry_std_mantle);
-
+        'depth_transition',FitVar(7),'material_lower',material_lower,...
+        'mantle_thickness',mantle_thickness,'k_dry_std_mantle',k_dry_std_mantle,...
+        'slope_angle',slope,'aspect_cwfromS',aspect_cwfromS,'f_diff',f_diff,'solar_azimuth_cwfromS',...
+        SolarAzimuthCwfromS,'solar_zenith_apparent',SolarZenith_Apparent);
+        
     % %Need to make this fxn adjustable to dif modes (have it decide
     % %automatically based on which inputs exist?)
     % formod = @(FitVar) tima_heat_transfer(FitVar(1),FitVar(2),FitVar(3),...
@@ -380,7 +386,8 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       MData.vars_init = Vars_init;
       MData.erf = erf;
       MData.mantle_thickness = mantle_thickness;
-      MData.k_dry_std_mantle = k_dry_std_mantle;
+      MData.aspect_cwfromS = aspect_cwfromS;
+      MData.slope = slope;
 
 % clearvars -except out_DIR TData MData
 c = fix(clock);
