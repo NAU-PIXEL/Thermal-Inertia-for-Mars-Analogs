@@ -386,8 +386,9 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       MData.vars_init = Vars_init;
       MData.erf = erf;
       MData.mantle_thickness = mantle_thickness;
+      MData.k_dry_std_mantle = k_dry_std_mantle;
       MData.aspect_cwfromS = aspect_cwfromS;
-      MData.slope = slope;
+      MData.slope_angle = slope;
 
 % clearvars -except out_DIR TData MData
 c = fix(clock);
