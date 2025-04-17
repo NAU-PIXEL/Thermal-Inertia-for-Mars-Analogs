@@ -173,7 +173,7 @@ Pressure_air_Pa = Data.BP_mbar.*100; %barometric pressure - converted to Pa late
 Soil_Temp_C_Probe = Data.T_Avg; %In Situ near surf Soil Temperature from nearest Dry probe
 Dewpoint_C = (243.04.*log(Humidity)+17.625.*Air_Temp_C./(243.04+Air_Temp_C))./(17.625-log(Humidity./100)+17.625.*Air_Temp_C./(243.04+Air_Temp_C));
 SolarAzimuthCwfromS = 180 - Data.SolarAzimuthAngledegCwFromN;
-f_diff = Data.DF;f_diff(isnan(f_diff))=1;
+f_diff = Data.DF;
 SolarZenith_Apparent = 90-Data.SolarElevationCorrectedForAtmRefractiondeg;
 clear Dug_VWC Dug_Temp
 Dug_VWC(:,1) = Data.VWC_Avg;
@@ -269,9 +269,9 @@ for i = 1:length(stability_array) %Loop to optimize layer thickness (i.e. highes
         VWC_column,evap_depth.*ones(size(Air_Temp_C)),Humidity,emissivity,...
         Pressure_air_Pa,'albedo',Albedo,'material',material,...
         'depth_transition',FitVar(7),'material_lower',material_lower,...
-        'mantle_thickness',mantle_thickness,'k_dry_std_mantle',k_dry_std_mantle,...
-        'slope_angle',slope,'aspect_cwfromS',aspect_cwfromS,'f_diff',f_diff,'solar_azimuth_cwfromS',...
-        SolarAzimuthCwfromS,'solar_zenith_apparent',SolarZenith_Apparent);
+        'mantle_thickness',mantle_thickness,'k_dry_std_mantle',k_dry_std_mantle);,...
+        % 'slope_angle',slope,'aspect_cwfromS',aspect_cwfromS,'f_diff',f_diff,'solar_azimuth_cwfromS',...
+        % SolarAzimuthCwfromS,'solar_zenith_apparent',SolarZenith_Apparent);
         
     % %Need to make this fxn adjustable to dif modes (have it decide
     % %automatically based on which inputs exist?)
@@ -386,9 +386,8 @@ title(ttl,'Interpreter','tex','FontName','Ariel')
       MData.vars_init = Vars_init;
       MData.erf = erf;
       MData.mantle_thickness = mantle_thickness;
-      MData.k_dry_std_mantle = k_dry_std_mantle;
       MData.aspect_cwfromS = aspect_cwfromS;
-      MData.slope_angle = slope;
+      MData.slope = slope;
 
 % clearvars -except out_DIR TData MData
 c = fix(clock);

@@ -107,14 +107,14 @@ function [T_surf_C] = tima_full_model(k_dry_std_upper,m,CH,CE,theta_k,theta_E,..
 p = inputParser;
 p.KeepUnmatched=true;
 % option to increase sampling rate if model does not converge
-p.addParameter('increase_sampling',false,@islogical);
+p.addParameter('IncreaseSampling',false,@islogical);
 % option to reinitialize subsurface temperatures for run. Increases compute time, 
 % but avoids dramatic shifts with param optimization leading to instability
-p.addParameter('initialize',false,@islogical);
+p.addParameter('Initialize',false,@islogical);
 p.parse(varargin{:});
 p=p.Results;
 
-if p.initialize
+if p.Initialize
     Subsurface_Temperatures = tima_initialize(k_dry_std_upper,rho_dry_upper,m,...
     theta_k,T_std,T_deep,T_surf_obs_C,dt,layer_size,VWC_column,RH,NDAYS,material,varargin{:});
     T_Start(:) = Subsurface_Temperatures(end,end,:);
@@ -125,7 +125,7 @@ end
         VWC_column,evap_depth,RH,emissivity,...
          pressure_air_pa,varargin{:});
 
-if any(T_surf_C==-65535) && p.increase_sampling
+if any(T_surf_C==-65535) && p.IncreaseSampling
     time_orig = dt.*(0:1:length(air_temp_C)-1);
     dt = 10;
     time_new = 0:dt:max(time_orig);

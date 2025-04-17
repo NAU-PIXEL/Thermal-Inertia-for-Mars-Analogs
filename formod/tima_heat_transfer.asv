@@ -157,7 +157,7 @@ T_adj2 = p.T_adj2;if ~isempty(T_adj2), T_adj2(1) = T_adj2(1)/(dt/60);end
 e_fxn = p.e_fxn;
 mantle_thickness = p.mantle_thickness;
 k_dry_std_mantle = p.k_dry_std_mantle;
-enable_melting = true; %switch to include ability of ice to melt
+enable_melting = false; %switch to include ability of ice to melt
 % ***************
 
 % ***************
@@ -235,14 +235,13 @@ for t = 2:length(air_temp_C)
     else %variably shadowed/sloped terrain
         phi = solar_azimuth_cwfromS(t-1);
         Z = solar_zenith_apparent(t-1);
-        Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);
-        Incidence(Incidence>1) = 1; Incidence(Incidence<0) = 0;
+        Incidence = cosd(Z)*cosd(slope_angle)+sind(Z)*sind(slope_angle)*cosd(phi-aspect_cwfromS);Incidence(Incidence>1) = 1; Incidence(Incidence<-1) = -1;
         if isempty(shadow_data)
-            q_rad(t) = (1-albedo(t-1))*Incidence*(1-f_diff(t-1))*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff(t-1)*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
+            q_rad(t) = (1-albedo(t-1))*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo(t-1))*omega*f_diff*r_short_upper(t-1)+(1-albedo(t-1))*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
         else
-            q_rad_full = (1-albedo)*Incidence*(1-f_diff(t-1))*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff(t-1)*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
+            q_rad_full = (1-albedo)*Incidence*(1-f_diff)*r_short_upper(t-1)/cosd(Z)+(1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower; %net heat flux entering surface
             Lit_Fraction = shadow_data(shadow_time_ind(t-1)); %Shadow = 0, unshadowed = 1;
-            q_rad(t) = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff(t-1)*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
+            q_rad(t) = Lit_Fraction*q_rad_full+(1-Lit_Fraction)*((1-albedo)*omega*f_diff*r_short_upper(t-1)+(1-albedo)*(1-omega)*r_short_lower(t-1)+omega*emissivity*r_long_upper(t-1)-omega*r_long_lower); %net heat flux entering surface
         end
     end
     %*******************************
@@ -314,12 +313,12 @@ for t = 2:length(air_temp_C)
         T(t,z) = T(t-1,z)+dT;
         if strcmp(material_lower,"ice") && z >= D_z && T(t,z) > 273.15
             if enable_melting==1 %Melt ice if enough energy?
-                q_ice = (T(t,z)-273.15)*(Cp*rho*layer_size(z));%heat in to ice J/m^2 assuming 50% purity (rho and Cp still as above)
-                m_melt(z) = m_melt(z)+q_ice/334000; %mass of ice melted added to prior mass. heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
-                if m_melt(z) > 917*0.5*layer_size(z); D_z = D_z+1; end %if mass is greater than total mass of ice in layer at 50%: melting. 917 = Desnity of ice kg/m^3 at 0C
+                q_ice = (T(t,z)-273.15)*(2090*rho*layer_size(z));%heat in to ice J/m^2 assuming 50% purity (rho is still as above), Cp = 2090
+                m_melt(z) = m_melt(z)+q_ice/334000; %heat input (J/m^2)/ Latent heat of fusion pure ice (J/kg)=kg/m^2
+                if m_melt(z) > 917*layer_size(z); D_z = D_z+1; end %melting 917 = Desnity of ice kg/m^3 at 0C
                 %To add: elseif freezing
             end
-            T(t,z) = 273.15;%set to 0 C if ice and above freezing, heat sink
+            if T(t,z) > 273.15; T(t,z) = 273.15; end %set to 0 C if ice and above freezing
         end
         q_latent(t,z) = q_evap_z;        
     end
